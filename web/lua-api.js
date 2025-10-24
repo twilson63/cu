@@ -121,9 +121,11 @@ export async function loadLuaWasm(options = {}) {
             const table = ensureExternalTable(table_id);
 
             const key = new TextDecoder().decode(wasmMemory.slice(key_ptr, key_ptr + key_len));
-            const value = new TextDecoder().decode(wasmMemory.slice(val_ptr, val_ptr + val_len));
+            // Store raw binary data to preserve function bytecode
+            const valueBytes = wasmMemory.slice(val_ptr, val_ptr + val_len);
+            const valueCopy = new Uint8Array(valueBytes);
 
-            table.set(key, value);
+            table.set(key, valueCopy);
             return 0;
           } catch (e) {
             console.error('js_ext_table_set error:', e);
@@ -140,7 +142,17 @@ export async function loadLuaWasm(options = {}) {
 
             if (value === undefined) return -1;
 
-            const valueBytes = new TextEncoder().encode(value);
+            // Handle binary data (Uint8Array) or legacy string data
+            let valueBytes;
+            if (value instanceof Uint8Array) {
+              valueBytes = value;
+            } else if (typeof value === 'string') {
+              // Legacy support for old string values
+              valueBytes = new TextEncoder().encode(value);
+            } else {
+              return -1;
+            }
+
             if (valueBytes.length > max_len) return -1;
 
             for (let i = 0; i < valueBytes.length; i++) {

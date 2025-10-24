@@ -53,9 +53,23 @@ class LuaPersistence {
 
     const promises = [];
     for (const [tableId, tableData] of externalTables) {
+      // Convert Map entries to object, preserving Uint8Array values
+      const dataObj = {};
+      for (const [key, value] of tableData) {
+        if (value instanceof Uint8Array) {
+          // Store binary data with a type marker
+          dataObj[key] = {
+            _type: 'binary',
+            data: Array.from(value) // Convert to array for JSON serialization
+          };
+        } else {
+          dataObj[key] = value;
+        }
+      }
+      
       const serializedData = {
         id: tableId,
-        data: Object.fromEntries(tableData)
+        data: dataObj
       };
 
       promises.push(new Promise((resolve, reject) => {
@@ -110,7 +124,18 @@ class LuaPersistence {
 
           const tableId = typeof record.id === 'number' ? record.id : Number(record.id);
           const entriesObject = record.data || {};
-          const tableData = new Map(Object.entries(entriesObject));
+          const tableData = new Map();
+          
+          // Restore entries, converting binary data back to Uint8Array
+          for (const [key, value] of Object.entries(entriesObject)) {
+            if (value && typeof value === 'object' && value._type === 'binary' && Array.isArray(value.data)) {
+              // Restore binary data
+              tableData.set(key, new Uint8Array(value.data));
+            } else {
+              tableData.set(key, value);
+            }
+          }
+          
           externalTables.set(tableId, tableData);
         }
 

@@ -1,5 +1,6 @@
 const std = @import("std");
 const lua = @import("lua.zig");
+const function_serializer = @import("function_serializer.zig");
 
 const IO_BUFFER_SIZE = 64 * 1024;
 
@@ -9,6 +10,8 @@ pub const SerializationType = enum(u8) {
     integer = 0x02,
     float = 0x03,
     string = 0x04,
+    function_bytecode = 0x05, // For Lua functions
+    function_ref = 0x06, // For C functions
 };
 
 pub const SerializationError = error{
@@ -72,6 +75,11 @@ pub fn serialize_value(L: *lua.lua_State, stack_index: c_int, buffer: [*]u8, max
         return 5 + str_len;
     }
 
+    if (lua.isfunction(L, stack_index)) {
+        // Delegate to function serializer
+        return function_serializer.serialize_function(L, stack_index, buffer, max_len);
+    }
+
     return SerializationError.TypeMismatch;
 }
 
@@ -127,6 +135,11 @@ pub fn deserialize_value(L: *lua.lua_State, buffer: [*]const u8, len: usize) Ser
             if (len < 5 + str_len) return SerializationError.InvalidFormat;
 
             _ = lua.pushlstring(L, buffer + 5, str_len);
+        },
+        SerializationType.function_bytecode, SerializationType.function_ref => {
+            // Delegate to function serializer for deserialization
+            // Pass the full buffer including type byte
+            try function_serializer.deserialize_function(L, value_type, buffer, len);
         },
     }
 }

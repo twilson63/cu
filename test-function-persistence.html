@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Function Persistence Test</title>
+  <style>
+    body { 
+      font-family: monospace; 
+      background: #1e1e1e; 
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    .test { 
+      margin: 20px 0; 
+      padding: 15px; 
+      background: #252526;
+      border-radius: 5px;
+    }
+    .success { color: #6fc96f; }
+    .error { color: #f97777; }
+    button { 
+      padding: 10px; 
+      margin: 5px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    pre { 
+      background: #1e1e1e; 
+      padding: 10px; 
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Function Persistence Test</h1>
+  
+  <div class="test">
+    <h2>Test 1: Create and Store Function</h2>
+    <button onclick="testCreateFunction()">Create Function</button>
+    <pre id="test1-output"></pre>
+  </div>
+  
+  <div class="test">
+    <h2>Test 2: Save State</h2>
+    <button onclick="testSaveState()">Save State</button>
+    <pre id="test2-output"></pre>
+  </div>
+  
+  <div class="test">
+    <h2>Test 3: Reload Page and Restore</h2>
+    <button onclick="testReloadAndRestore()">Simulate Reload & Restore</button>
+    <pre id="test3-output"></pre>
+  </div>
+  
+  <div class="test">
+    <h2>Test 4: Call Restored Function</h2>
+    <button onclick="testCallRestoredFunction()">Call Function</button>
+    <pre id="test4-output"></pre>
+  </div>
+
+  <script type="module">
+    import lua from './web/lua-api.js';
+    window.lua = lua;
+    
+    async function init() {
+      await lua.loadLuaWasm();
+      lua.init();
+      console.log('Lua initialized');
+    }
+    
+    window.testCreateFunction = async () => {
+      const output = document.getElementById('test1-output');
+      try {
+        // Create a simple function and store it in Memory
+        const code = `
+-- Create a function
+function greet(name)
+  return "Hello, " .. name .. "!"
+end
+
+-- Store it in Memory
+Memory.greet = greet
+
+-- Also create a more complex function with closure
+local counter = 0
+function makeCounter()
+  counter = counter + 1
+  return counter
+end
+Memory.makeCounter = makeCounter
+
+-- Test the functions work
+print("Testing greet:", Memory.greet("World"))
+print("Testing counter:", Memory.makeCounter())
+print("Testing counter again:", Memory.makeCounter())
+
+return "Functions created and stored in Memory"
+        `;
+        
+        const result = await lua.compute(code);
+        const outputText = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        output.textContent = outputText;
+        output.className = result > 0 ? 'success' : 'error';
+      } catch (error) {
+        output.textContent = 'Error: ' + error.message;
+        output.className = 'error';
+      }
+    };
+    
+    window.testSaveState = async () => {
+      const output = document.getElementById('test2-output');
+      try {
+        // Try to save the state including the function
+        const saved = await lua.saveState();
+        if (saved) {
+          output.textContent = '✅ State saved to localStorage';
+          output.className = 'success';
+          
+          // Check what was actually saved
+          const savedData = localStorage.getItem('lua_state_default');
+          if (savedData) {
+            const parsed = JSON.parse(savedData);
+            output.textContent += '\n\nSaved data preview:\n' + JSON.stringify(parsed, null, 2).substring(0, 500);
+          }
+        } else {
+          output.textContent = '❌ Failed to save state';
+          output.className = 'error';
+        }
+      } catch (error) {
+        output.textContent = 'Error: ' + error.message;
+        output.className = 'error';
+      }
+    };
+    
+    window.testReloadAndRestore = async () => {
+      const output = document.getElementById('test3-output');
+      try {
+        // First, reinitialize Lua (simulating a page reload)
+        output.textContent = 'Reinitializing Lua...\n';
+        await lua.loadLuaWasm();
+        lua.init();
+        output.textContent += '✅ Lua reinitialized\n\n';
+        
+        // Now restore the state
+        const loaded = await lua.loadState();
+        if (loaded) {
+          output.textContent += '✅ State restored from localStorage\n';
+          output.className = 'success';
+          
+          // Check if Memory table exists
+          const checkCode = `
+if Memory then
+  print("Memory table exists")
+  -- Check if our functions are there
+  if Memory.greet then
+    print("Memory.greet exists, type:", type(Memory.greet))
+  else
+    print("Memory.greet is missing")
+  end
+  if Memory.makeCounter then
+    print("Memory.makeCounter exists, type:", type(Memory.makeCounter))
+  else
+    print("Memory.makeCounter is missing")
+  end
+else
+  print("Memory table does not exist")
+end
+return "Check complete"
+          `;
+          
+          const result = await lua.compute(checkCode);
+          const checkOutput = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+          output.textContent += '\nCheck results:\n' + checkOutput;
+        } else {
+          output.textContent += '❌ Failed to restore state';
+          output.className = 'error';
+        }
+      } catch (error) {
+        output.textContent = 'Error: ' + error.message;
+        output.className = 'error';
+      }
+    };
+    
+    window.testCallRestoredFunction = async () => {
+      const output = document.getElementById('test4-output');
+      try {
+        // Try to call the restored functions
+        const code = `
+-- Try to call the restored functions
+local results = {}
+
+-- Test if functions exist
+if Memory.greet then
+  if type(Memory.greet) == "function" then
+    local ok, result = pcall(Memory.greet, "Restored World")
+    if ok then
+      table.insert(results, "greet() worked: " .. result)
+    else
+      table.insert(results, "greet() error: " .. result)
+    end
+  else
+    table.insert(results, "Memory.greet is type: " .. type(Memory.greet))
+  end
+else
+  table.insert(results, "Memory.greet is nil")
+end
+
+if Memory.makeCounter then
+  if type(Memory.makeCounter) == "function" then
+    local ok, result = pcall(Memory.makeCounter)
+    if ok then
+      table.insert(results, "makeCounter() worked: " .. tostring(result))
+    else
+      table.insert(results, "makeCounter() error: " .. result)
+    end
+  else
+    table.insert(results, "Memory.makeCounter is type: " .. type(Memory.makeCounter))
+  end
+else
+  table.insert(results, "Memory.makeCounter is nil")
+end
+
+for _, msg in ipairs(results) do
+  print(msg)
+end
+
+return "Test complete"
+        `;
+        
+        const result = await lua.compute(code);
+        const outputText = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        output.textContent = outputText;
+        output.className = result > 0 ? 'success' : 'error';
+      } catch (error) {
+        output.textContent = 'Error: ' + error.message;
+        output.className = 'error';
+      }
+    };
+    
+    // Initialize on load
+    init().catch(console.error);
+  </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>External Memory Size Test</title>
+  <style>
+    body { 
+      font-family: 'Monaco', monospace; 
+      background: #1e1e1e; 
+      color: #e0e0e0;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    button { 
+      padding: 10px 20px; 
+      margin: 5px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .output {
+      background: #252526;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+    .stats {
+      background: #1e1e1e;
+      padding: 10px;
+      border-left: 3px solid #4ec9b0;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🗄️ External Memory Size Test</h1>
+  
+  <div class="stats" id="stats">
+    Current stats will appear here...
+  </div>
+  
+  <button onclick="testLargeData()">Test Large Data Storage (1000 items)</button>
+  <button onclick="testManyFunctions()">Create 100 Functions</button>
+  <button onclick="testLargeStrings()">Store Large Strings</button>
+  <button onclick="getStorageInfo()">Get Storage Info</button>
+  <button onclick="clearAll()">Clear All</button>
+  
+  <div class="output" id="output">Ready for testing...</div>
+
+  <script type="module">
+    import lua from '../web/lua-api.js';
+    window.lua = lua;
+    
+    function updateStats() {
+      const info = lua.getTableInfo();
+      let stats = `External Tables: ${info.tableCount}\n`;
+      stats += `Memory Table ID: ${info.memoryTableId}\n`;
+      
+      // Calculate approximate size
+      let totalItems = 0;
+      let approxSize = 0;
+      
+      // This is just an estimate
+      for (const id of info.tableIds) {
+        // Each table might have multiple items
+        totalItems += 10; // estimate
+        approxSize += 1024; // estimate 1KB per item
+      }
+      
+      stats += `Estimated items: ~${totalItems}\n`;
+      stats += `Estimated size: ~${(approxSize / 1024).toFixed(2)} KB`;
+      
+      document.getElementById('stats').textContent = stats;
+    }
+    
+    window.testLargeData = async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Creating 1000 data items...\n';
+      
+      const startTime = Date.now();
+      
+      const code = `
+local start = os.clock()
+
+-- Create 1000 items with mixed data types
+for i = 1, 1000 do
+  Memory["item_" .. i] = "Data " .. i
+  Memory["number_" .. i] = i * 3.14159
+  Memory["bool_" .. i] = (i % 2 == 0)
+  
+  if i % 100 == 0 then
+    print("Created " .. i .. " items...")
+  end
+end
+
+-- Also create some nested tables
+Memory.bigTable = {}
+for i = 1, 100 do
+  Memory.bigTable[i] = {
+    id = i,
+    name = "Item " .. i,
+    value = math.random() * 1000
+  }
+end
+
+local elapsed = os.clock() - start
+print(string.format("Created 1000+ items in %.3f seconds", elapsed))
+
+-- Count items
+local count = 0
+for k, v in pairs(Memory) do
+  count = count + 1
+end
+
+return "Total items in Memory: " .. count`;
+      
+      try {
+        const result = await lua.compute(code);
+        const luaOutput = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        
+        const elapsed = Date.now() - startTime;
+        output.textContent += luaOutput;
+        output.textContent += `\n\nJavaScript time: ${elapsed}ms`;
+        
+        updateStats();
+        
+        // Try to save
+        output.textContent += '\n\nSaving to storage...';
+        const saved = await lua.saveState();
+        output.textContent += saved ? '\n✅ Saved successfully!' : '\n❌ Save failed';
+        
+      } catch (error) {
+        output.textContent += '\nError: ' + error.message;
+      }
+    };
+    
+    window.testManyFunctions = async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Creating 100 functions...\n';
+      
+      const code = `
+print("Creating 100 unique functions...")
+
+for i = 1, 100 do
+  -- Each function captures its own ID
+  local id = i
+  Memory["func_" .. i] = function(x)
+    return string.format("Function #%d called with %s", id, tostring(x))
+  end
+  
+  if i % 10 == 0 then
+    print("Created " .. i .. " functions...")
+  end
+end
+
+-- Test a few
+print("\\nTesting some functions:")
+print(Memory.func_1("test"))
+print(Memory.func_50("hello"))
+print(Memory.func_100("world"))
+
+-- Estimate size (Lua bytecode is typically 50-200 bytes per simple function)
+local estimated_size = 100 * 100  -- 100 functions * ~100 bytes each
+return string.format("Created 100 functions (~%d KB)", estimated_size / 1024)`;
+      
+      try {
+        const result = await lua.compute(code);
+        const luaOutput = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        output.textContent += luaOutput;
+        
+        updateStats();
+        
+        // Save and report
+        output.textContent += '\n\nSaving functions to storage...';
+        const saved = await lua.saveState();
+        output.textContent += saved ? '\n✅ All functions saved!' : '\n❌ Save failed';
+        
+      } catch (error) {
+        output.textContent += '\nError: ' + error.message;
+      }
+    };
+    
+    window.testLargeStrings = async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Testing large string storage...\n';
+      
+      const code = `
+-- Create strings of various sizes
+local sizes = {100, 1000, 5000, 10000, 15000}
+local total_size = 0
+
+for i, size in ipairs(sizes) do
+  local str = string.rep("x", size)
+  Memory["string_" .. size] = str
+  total_size = total_size + size
+  print(string.format("Stored %d byte string", size))
+end
+
+-- Try to store a very large string (near the 16KB limit)
+local big_string = string.rep("Hello World! ", 1000)  -- ~13KB
+Memory.big_string = big_string
+print(string.format("Stored large string: %d bytes", #big_string))
+
+total_size = total_size + #big_string
+return string.format("Total string data stored: %.1f KB", total_size / 1024)`;
+      
+      try {
+        const result = await lua.compute(code);
+        const luaOutput = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        output.textContent += luaOutput;
+        
+        updateStats();
+        
+      } catch (error) {
+        output.textContent += '\nError: ' + error.message;
+      }
+    };
+    
+    window.getStorageInfo = async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Checking storage capabilities...\n\n';
+      
+      // Check IndexedDB storage quota
+      if (navigator.storage && navigator.storage.estimate) {
+        const estimate = await navigator.storage.estimate();
+        const used = (estimate.usage / (1024 * 1024)).toFixed(2);
+        const quota = (estimate.quota / (1024 * 1024 * 1024)).toFixed(2);
+        const percent = ((estimate.usage / estimate.quota) * 100).toFixed(4);
+        
+        output.textContent += `IndexedDB Storage:\n`;
+        output.textContent += `  Used: ${used} MB\n`;
+        output.textContent += `  Available: ${quota} GB\n`;
+        output.textContent += `  Usage: ${percent}%\n\n`;
+      }
+      
+      // Check current Memory table
+      const code = `
+local count = 0
+local funcs = 0
+local strings = 0
+local numbers = 0
+local string_bytes = 0
+
+for k, v in pairs(Memory) do
+  count = count + 1
+  local t = type(v)
+  if t == "function" then
+    funcs = funcs + 1
+  elseif t == "string" then
+    strings = strings + 1
+    string_bytes = string_bytes + #v
+  elseif t == "number" then
+    numbers = numbers + 1
+  end
+end
+
+print("Memory Table Contents:")
+print("  Total items: " .. count)
+print("  Functions: " .. funcs)
+print("  Strings: " .. strings .. " (" .. string_bytes .. " bytes)")
+print("  Numbers: " .. numbers)
+
+return count`;
+      
+      const result = await lua.compute(code);
+      const luaOutput = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+      output.textContent += luaOutput;
+      
+      updateStats();
+    };
+    
+    window.clearAll = async () => {
+      if (!confirm('Clear all stored data?')) return;
+      
+      const output = document.getElementById('output');
+      
+      const code = `
+-- Clear Memory table
+for k, v in pairs(Memory) do
+  Memory[k] = nil
+end
+return "Memory cleared"`;
+      
+      await lua.compute(code);
+      await lua.clearStorage();
+      
+      output.textContent = 'All data cleared!';
+      updateStats();
+    };
+    
+    // Initialize
+    async function init() {
+      await lua.loadLuaWasm({ autoRestore: true });
+      lua.init();
+      updateStats();
+      document.getElementById('output').textContent = 'Ready! Try the test buttons above.';
+    }
+    
+    init();
+  </script>
+</body>
+</html>

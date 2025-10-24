@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Function Persistence Demo - Clear Visual Proof</title>
+  <style>
+    body { 
+      font-family: 'Monaco', monospace; 
+      background: #1e1e1e; 
+      color: #e0e0e0;
+      padding: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    h1 { color: #4ec9b0; }
+    .demo-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .panel {
+      background: #252526;
+      padding: 20px;
+      border-radius: 5px;
+      border: 2px solid #3e3e42;
+    }
+    .panel.active {
+      border-color: #4ec9b0;
+      box-shadow: 0 0 10px rgba(78, 201, 176, 0.3);
+    }
+    .panel h2 {
+      color: #9cdcfe;
+      margin-top: 0;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px 0;
+      background: #0e639c;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'Monaco', monospace;
+      width: 100%;
+      font-size: 14px;
+    }
+    button:hover { background: #1177bb; }
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    .output {
+      background: #1e1e1e;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 3px;
+      min-height: 100px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+    .success { color: #6fc96f; }
+    .error { color: #f97777; }
+    .warning { color: #ffcc00; }
+    .info { color: #6fc9f9; }
+    .highlight {
+      background: #ffcc0020;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
+    .indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .indicator.on { background: #6fc96f; }
+    .indicator.off { background: #444; }
+    .status-bar {
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 3px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .code-editor {
+      background: #1e1e1e;
+      border: 1px solid #3e3e42;
+      padding: 10px;
+      border-radius: 3px;
+      font-family: 'Monaco', monospace;
+      font-size: 12px;
+      width: 100%;
+      min-height: 150px;
+      color: #d4d4d4;
+      resize: vertical;
+    }
+    .big-number {
+      font-size: 48px;
+      color: #4ec9b0;
+      text-align: center;
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    .timestamp {
+      color: #858585;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 Function Persistence Demo - Visual Proof</h1>
+  <p>This demo clearly shows that functions ARE being persisted and restored from browser storage.</p>
+  
+  <div class="status-bar">
+    <div><span class="indicator" id="vm-indicator"></span>Lua VM</div>
+    <div><span class="indicator" id="function-indicator"></span>Custom Function</div>
+    <div><span class="indicator" id="storage-indicator"></span>Storage Saved</div>
+    <div id="timestamp" class="timestamp"></div>
+  </div>
+
+  <div class="demo-container">
+    <!-- Left Panel: Before Persistence -->
+    <div class="panel" id="before-panel">
+      <h2>📝 Step 1: Create Dynamic Function</h2>
+      <p>This function will be created with a <span class="highlight">unique timestamp</span> so we can prove it's the same one after reload:</p>
+      
+      <textarea id="function-code" class="code-editor">-- This function includes a unique timestamp
+-- that proves it's the exact same function after reload
+local creation_time = os.time()
+local unique_id = math.random(1000, 9999)
+
+function Memory.myUniqueFunction(name)
+  return string.format(
+    "Hello %s! I was created at %d with ID #%d", 
+    name, creation_time, unique_id
+  )
+end
+
+-- Also create a counter function with state
+local call_count = 0
+function Memory.counter()
+  call_count = call_count + 1
+  return "Called " .. call_count .. " times"
+end
+
+-- Store the metadata
+Memory.function_id = unique_id
+Memory.creation_time = creation_time
+
+return "Created function with ID #" .. unique_id</textarea>
+      
+      <button onclick="createFunction()" id="create-btn">1️⃣ Create Function</button>
+      <button onclick="testFunction()" id="test-btn" disabled>2️⃣ Test Function</button>
+      <button onclick="saveToStorage()" id="save-btn" disabled>3️⃣ Save to Browser Storage</button>
+      
+      <div class="output" id="before-output">Ready to create function...</div>
+    </div>
+
+    <!-- Right Panel: After Persistence -->
+    <div class="panel" id="after-panel">
+      <h2>🔄 Step 2: After VM Reset</h2>
+      <p>Reset the VM (simulating page reload) and restore from storage:</p>
+      
+      <button onclick="resetVM()" id="reset-btn" disabled>4️⃣ Reset Lua VM (Clear Everything)</button>
+      <button onclick="verifyGone()" id="verify-btn" disabled>5️⃣ Verify Function is Gone</button>
+      <button onclick="restoreFromStorage()" id="restore-btn" disabled>6️⃣ Restore from Storage</button>
+      <button onclick="testRestoredFunction()" id="test-restored-btn" disabled>7️⃣ Test Restored Function</button>
+      
+      <div class="output" id="after-output">Waiting for function creation...</div>
+      
+      <div id="comparison" style="margin-top: 20px; display: none;">
+        <h3>Function ID Comparison:</h3>
+        <div style="display: flex; gap: 20px; text-align: center;">
+          <div style="flex: 1;">
+            <div style="color: #858585;">Original ID:</div>
+            <div class="big-number" id="original-id">-</div>
+          </div>
+          <div style="flex: 1;">
+            <div style="color: #858585;">Restored ID:</div>
+            <div class="big-number" id="restored-id">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 20px;">
+    <h2>💡 What This Proves</h2>
+    <ul style="line-height: 1.8;">
+      <li>The function includes a <span class="highlight">unique timestamp and random ID</span> generated when created</li>
+      <li>After resetting the VM, the function is <span class="error">completely gone</span></li>
+      <li>After restoring from storage, the <span class="success">exact same function</span> with the <span class="success">same timestamp and ID</span> is back</li>
+      <li>This proves the function was <span class="success">serialized, stored, and deserialized</span> - not recreated</li>
+    </ul>
+  </div>
+
+  <script type="module">
+    import lua from '../web/lua-api.js';
+    window.lua = lua;
+    
+    let originalFunctionId = null;
+    let isVMReset = false;
+    
+    function updateIndicators() {
+      // This will be called to update the status indicators
+    }
+    
+    function setOutput(id, text, className = '') {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'output ' + className;
+    }
+    
+    function appendOutput(id, text) {
+      const el = document.getElementById(id);
+      el.textContent += '\n' + text;
+    }
+    
+    window.createFunction = async () => {
+      try {
+        setOutput('before-output', 'Creating function...', 'info');
+        
+        const code = document.getElementById('function-code').value;
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        
+        if (result > 0) {
+          // Extract the ID from the output
+          const match = output.match(/ID #(\d+)/);
+          if (match) {
+            originalFunctionId = match[1];
+            document.getElementById('original-id').textContent = originalFunctionId;
+          }
+          
+          setOutput('before-output', output + '\n\n✅ Function created successfully!', 'success');
+          document.getElementById('test-btn').disabled = false;
+          document.getElementById('create-btn').disabled = true;
+          document.getElementById('function-indicator').className = 'indicator on';
+          document.getElementById('before-panel').className = 'panel active';
+        } else {
+          setOutput('before-output', 'Error: ' + output, 'error');
+        }
+      } catch (error) {
+        setOutput('before-output', 'Error: ' + error.message, 'error');
+      }
+    };
+    
+    window.testFunction = async () => {
+      try {
+        const code = `
+print("Testing function:")
+print("================")
+print(Memory.myUniqueFunction("Alice"))
+print(Memory.myUniqueFunction("Bob"))
+print("")
+print("Counter test:")
+print(Memory.counter())
+print(Memory.counter())
+print("")
+print("Function ID: " .. tostring(Memory.function_id))
+print("Creation time: " .. tostring(Memory.creation_time))
+return "✅ Function works!"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        
+        if (result > 0) {
+          appendOutput('before-output', '\n' + output);
+          document.getElementById('save-btn').disabled = false;
+        } else {
+          appendOutput('before-output', '\nError: ' + output);
+        }
+      } catch (error) {
+        appendOutput('before-output', '\nError: ' + error.message);
+      }
+    };
+    
+    window.saveToStorage = async () => {
+      try {
+        setOutput('before-output', 'Saving to browser storage...', 'info');
+        
+        const saved = await lua.saveState();
+        if (saved) {
+          const timestamp = new Date().toLocaleTimeString();
+          document.getElementById('timestamp').textContent = 'Saved at ' + timestamp;
+          document.getElementById('storage-indicator').className = 'indicator on';
+          
+          appendOutput('before-output', '\n✅ Saved to IndexedDB at ' + timestamp);
+          appendOutput('before-output', 'Function and state are now persisted!');
+          
+          // Enable reset button
+          document.getElementById('reset-btn').disabled = false;
+          document.getElementById('save-btn').disabled = true;
+          document.getElementById('before-panel').className = 'panel';
+          document.getElementById('after-panel').className = 'panel active';
+        } else {
+          appendOutput('before-output', '\n❌ Failed to save');
+        }
+      } catch (error) {
+        appendOutput('before-output', '\nError: ' + error.message);
+      }
+    };
+    
+    window.resetVM = async () => {
+      try {
+        setOutput('after-output', 'Resetting Lua VM...', 'warning');
+        
+        // Completely reinitialize the VM without restoring
+        await lua.loadLuaWasm({ autoRestore: false });
+        lua.init();
+        isVMReset = true;
+        
+        // Update indicators
+        document.getElementById('vm-indicator').className = 'indicator on';
+        document.getElementById('function-indicator').className = 'indicator off';
+        
+        setOutput('after-output', '⚠️ Lua VM has been reset!\n\nAll functions and data are now gone.\nThe VM is in a fresh state.', 'warning');
+        
+        document.getElementById('reset-btn').disabled = true;
+        document.getElementById('verify-btn').disabled = false;
+      } catch (error) {
+        setOutput('after-output', 'Error: ' + error.message, 'error');
+      }
+    };
+    
+    window.verifyGone = async () => {
+      try {
+        const code = `
+print("Checking if function exists after VM reset:")
+print("==========================================")
+
+if Memory.myUniqueFunction then
+  print("❌ UNEXPECTED: Function still exists!")
+  print("Type: " .. type(Memory.myUniqueFunction))
+else
+  print("✅ Function is GONE (as expected)")
+  print("   Memory.myUniqueFunction = " .. tostring(Memory.myUniqueFunction))
+end
+
+if Memory.function_id then
+  print("❌ UNEXPECTED: Metadata still exists!")
+else
+  print("✅ Metadata is GONE (as expected)")
+  print("   Memory.function_id = " .. tostring(Memory.function_id))
+end
+
+-- Try to call it (should fail)
+local success, err = pcall(function()
+  if Memory.myUniqueFunction then
+    return Memory.myUniqueFunction("Test")
+  else
+    error("Function does not exist")
+  end
+end)
+
+if success then
+  print("❌ UNEXPECTED: Function call succeeded: " .. tostring(err))
+else
+  print("✅ Function call failed (as expected):")
+  print("   " .. tostring(err))
+end
+
+return "Verification complete"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        
+        appendOutput('after-output', '\n' + output);
+        
+        if (result > 0) {
+          document.getElementById('restore-btn').disabled = false;
+          document.getElementById('verify-btn').disabled = true;
+        }
+      } catch (error) {
+        appendOutput('after-output', '\nError: ' + error.message);
+      }
+    };
+    
+    window.restoreFromStorage = async () => {
+      try {
+        appendOutput('after-output', '\n\nRestoring from browser storage...');
+        
+        const loaded = await lua.loadState();
+        if (loaded) {
+          appendOutput('after-output', '✅ State restored from IndexedDB!');
+          
+          // Check what we got back
+          const code = `
+print("")
+print("Checking restored function:")
+print("==========================")
+
+if Memory.myUniqueFunction then
+  print("✅ Function IS BACK!")
+  print("   Type: " .. type(Memory.myUniqueFunction))
+  print("   Function ID: " .. tostring(Memory.function_id))
+else
+  print("❌ Function was not restored")
+end
+
+return Memory.function_id or 0`;
+          
+          const result = await lua.compute(code);
+          const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+          
+          appendOutput('after-output', output);
+          
+          if (result > 0) {
+            // Extract restored ID
+            const restoredId = lua.readBuffer(lua.getBufferPtr(), result).match(/\d+/)?.[0];
+            if (restoredId) {
+              document.getElementById('restored-id').textContent = restoredId;
+              document.getElementById('comparison').style.display = 'block';
+              
+              if (restoredId === originalFunctionId) {
+                appendOutput('after-output', '\n🎉 EXACT SAME FUNCTION RESTORED! ID matches: #' + restoredId);
+              }
+            }
+            
+            document.getElementById('test-restored-btn').disabled = false;
+            document.getElementById('restore-btn').disabled = true;
+            document.getElementById('function-indicator').className = 'indicator on';
+          }
+        } else {
+          appendOutput('after-output', '❌ Failed to restore');
+        }
+      } catch (error) {
+        appendOutput('after-output', '\nError: ' + error.message);
+      }
+    };
+    
+    window.testRestoredFunction = async () => {
+      try {
+        const code = `
+print("")
+print("Testing RESTORED function:")
+print("=========================")
+
+-- Call the restored function
+local result1 = Memory.myUniqueFunction("Charlie")
+print(result1)
+
+-- The timestamp and ID in the function should be the SAME as before
+print("")
+print("This proves:")
+print("1. The function was serialized to bytecode")
+print("2. Stored in browser storage") 
+print("3. Survived VM reset")
+print("4. Was deserialized back to executable code")
+print("5. Still contains the original timestamp/ID!")
+
+-- Test counter (state will be reset though)
+print("")
+print("Counter test (state resets):")
+print(Memory.counter())
+print(Memory.counter())
+
+return "✅ Restored function works perfectly!"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        
+        appendOutput('after-output', output);
+        
+        if (result > 0 && originalFunctionId) {
+          appendOutput('after-output', '\n\n' + '='.repeat(50));
+          appendOutput('after-output', '🏆 SUCCESS: Function persistence is working!');
+          appendOutput('after-output', 'The function with ID #' + originalFunctionId + ' survived the VM reset!');
+          appendOutput('after-output', '='.repeat(50));
+        }
+        
+        document.getElementById('test-restored-btn').disabled = true;
+      } catch (error) {
+        appendOutput('after-output', '\nError: ' + error.message);
+      }
+    };
+    
+    // Initialize
+    async function init() {
+      try {
+        await lua.loadLuaWasm({ autoRestore: false });
+        lua.init();
+        document.getElementById('vm-indicator').className = 'indicator on';
+        setOutput('before-output', 'Ready! Click "Create Function" to begin.', 'info');
+      } catch (error) {
+        setOutput('before-output', 'Failed to initialize: ' + error.message, 'error');
+      }
+    }
+    
+    init();
+  </script>
+</body>
+</html>

@@ -1,24 +1,23 @@
 # Agent Guidelines
 
-- **Build**: `./build.sh` → emits `web/lua.wasm`
-- **Test**: `npm test` (Playwright); single: `npx playwright test tests/integration.test.js -g "name"`
+## Build/Test Commands
+- **Build**: `./build.sh` → generates `web/lua.wasm` (512KB malloc pool, 64KB IO buffer)
+- **Test**: `npm test` (Playwright) | Single: `npx playwright test -g "test name"`
+- **Demo**: `npm run demo` → serves on http://localhost:8000
 - **Clean**: `rm -rf .zig-cache .build web/lua.wasm && ./build.sh`
 
-**Zig**
-- Target `wasm32-freestanding`, no WASI/Emscripten
-- Static globals only: 512KB malloc pool, 64KB IO buffer
-- Style: snake_case funcs/vars, PascalCase types, return `c_int` codes
-- Imports via `const mod = @import("file.zig");`, exports listed in `build.sh`
+## Code Style - Zig
+- Target: `wasm32-freestanding` (no WASI/Emscripten, static globals only)
+- Naming: `snake_case` funcs/vars, `PascalCase` types, prefix exports with `lua_`
+- Imports: `const mod = @import("file.zig");` exports in `build.sh`
+- Memory: Route via `lua_malloc/lua_realloc/lua_free`, never dynamic allocation
+- Returns: Use `c_int` for status codes (0=success, -1=error)
 
-**JS Bridge**
-- Host FFI: `js_ext_table_set/get/delete/size/keys`
-- `_G.Memory` auto-attached via `attach_memory_table`, id fetched with `get_memory_table_id`
-- Sync table ids with `sync_external_table_counter`; persistence stores `{memoryTableId,nextTableId}` in IndexedDB
+## Code Style - JavaScript  
+- Modules: ES6 imports/exports, async/await for WASM loading
+- Error handling: Return `{error, value, output}` objects from API calls
+- Testing: Playwright with descriptive test names, use `test.describe` for grouping
 
-**Constraints**
-- Never use Emscripten or dynamic allocation
-- Always route allocation through `lua_malloc/lua_realloc/lua_free`
-
-**Context**
-- 33 Lua C sources + 49 Zig libc stubs
-- See `FREESTANDING_IMPLEMENTATION_REPORT.md` for architecture details
+## Architecture
+- Lua C sources (33 files) + Zig libc stubs (49) → freestanding WASM
+- JS Bridge: `js_ext_table_*` FFI for IndexedDB persistence via `_G.Memory`

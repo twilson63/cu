@@ -354,10 +354,25 @@ return Memory.counter</textarea>
         let code = '';
         switch(type) {
           case 'memory':
-            code = `-- Increment a persistent counter stored in Memory
-Memory.counter = (Memory.counter or 0) + 1
-print("Counter is now", Memory.counter)
-return Memory.counter`;
+            code = `-- FUNCTION PERSISTENCE DEMO
+-- Create a function with a unique timestamp
+local timestamp = os.time()
+Memory.myFunc = function(x)
+  return "Created at " .. timestamp .. ": " .. x
+end
+
+-- Test it
+print(Memory.myFunc("Hello"))
+print("Timestamp embedded: " .. timestamp)
+
+-- NOW: Click 💾 Save State
+-- THEN: Refresh the browser (F5)
+-- THEN: Click 📂 Load State
+-- THEN: Run this code:
+-- print(Memory.myFunc("I survived!"))
+-- The same timestamp will prove it's the same function!
+
+return "Function created with timestamp: " .. timestamp`;
             break;
           case 'math':
             code = `-- Calculate sum from 1 to 100

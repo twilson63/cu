@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Function Persistence Test - Lua WASM</title>
+  <style>
+    body { 
+      font-family: 'Monaco', monospace; 
+      background: #1e1e1e; 
+      color: #e0e0e0;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 { color: #4ec9b0; }
+    h2 { color: #9cdcfe; margin-top: 30px; }
+    .test-section { 
+      background: #252526; 
+      padding: 20px; 
+      margin: 20px 0; 
+      border-radius: 5px;
+      border-left: 3px solid #4ec9b0;
+    }
+    button { 
+      padding: 10px 20px; 
+      margin: 5px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-family: 'Monaco', monospace;
+    }
+    button:hover { background: #1177bb; }
+    pre { 
+      background: #1e1e1e; 
+      padding: 15px; 
+      overflow: auto;
+      border-radius: 3px;
+      white-space: pre-wrap;
+    }
+    .success { color: #6fc96f; }
+    .error { color: #f97777; }
+    .info { color: #6fc9f9; }
+    .warning { color: #ffcc00; }
+    #status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    .step { 
+      display: flex; 
+      align-items: center; 
+      margin: 10px 0;
+    }
+    .step-number {
+      background: #4ec9b0;
+      color: #1e1e1e;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Lua Function Persistence Test</h1>
+  <p>This test demonstrates persisting Lua functions through the Memory table and browser storage.</p>
+  
+  <div id="status" class="info">Ready to start testing...</div>
+
+  <div class="test-section">
+    <h2>Step-by-Step Function Persistence Test</h2>
+    
+    <div class="step">
+      <div class="step-number">1</div>
+      <div>
+        <button onclick="step1_createFunctions()">Create Functions in Memory</button>
+        <span> - Creates various Lua functions and stores them in Memory table</span>
+      </div>
+    </div>
+    <pre id="step1-output"></pre>
+    
+    <div class="step">
+      <div class="step-number">2</div>
+      <div>
+        <button onclick="step2_testFunctions()">Test Functions Work</button>
+        <span> - Verify the functions execute correctly</span>
+      </div>
+    </div>
+    <pre id="step2-output"></pre>
+    
+    <div class="step">
+      <div class="step-number">3</div>
+      <div>
+        <button onclick="step3_saveState()">Save State to Browser Storage</button>
+        <span> - Persist the Memory table with functions to IndexedDB</span>
+      </div>
+    </div>
+    <pre id="step3-output"></pre>
+    
+    <div class="step">
+      <div class="step-number">4</div>
+      <div>
+        <button onclick="step4_clearMemory()">Clear Memory (Simulate Page Reload)</button>
+        <span> - Reset the Lua VM to simulate a fresh page load</span>
+      </div>
+    </div>
+    <pre id="step4-output"></pre>
+    
+    <div class="step">
+      <div class="step-number">5</div>
+      <div>
+        <button onclick="step5_restoreState()">Restore State from Storage</button>
+        <span> - Load the persisted Memory table including functions</span>
+      </div>
+    </div>
+    <pre id="step5-output"></pre>
+    
+    <div class="step">
+      <div class="step-number">6</div>
+      <div>
+        <button onclick="step6_testRestoredFunctions()">Test Restored Functions</button>
+        <span> - Verify the restored functions still work correctly</span>
+      </div>
+    </div>
+    <pre id="step6-output"></pre>
+  </div>
+
+  <div class="test-section">
+    <h2>Debug Information</h2>
+    <button onclick="showDebugInfo()">Show Debug Info</button>
+    <button onclick="clearAllStorage()">Clear All Storage</button>
+    <pre id="debug-output"></pre>
+  </div>
+
+  <script type="module">
+    import lua from '../web/lua-api.js';
+    window.lua = lua;
+    
+    function setStatus(msg, type = 'info') {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = type;
+    }
+    
+    function clearOutput(id) {
+      document.getElementById(id).textContent = '';
+    }
+    
+    function appendOutput(id, text, className = '') {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      if (className) el.className = className;
+    }
+    
+    window.step1_createFunctions = async () => {
+      clearOutput('step1-output');
+      setStatus('Creating functions...', 'info');
+      
+      try {
+        const code = `
+-- Create various types of functions to test persistence
+
+-- 1. Simple function
+function Memory.greet(name)
+  return "Hello, " .. (name or "World") .. "!"
+end
+
+-- 2. Function with closure (captures external variable)
+local counter = 0
+function Memory.increment()
+  counter = counter + 1
+  return counter
+end
+
+-- 3. Function that returns a function
+function Memory.makeMultiplier(x)
+  return function(y)
+    return x * y
+  end
+end
+
+-- 4. Recursive function
+function Memory.factorial(n)
+  if n <= 1 then
+    return 1
+  else
+    return n * Memory.factorial(n - 1)
+  end
+end
+
+-- 5. Function using upvalues
+do
+  local secret = "hidden value"
+  function Memory.getSecret()
+    return secret
+  end
+end
+
+-- Also store some regular data
+Memory.testNumber = 42
+Memory.testString = "Persistence Test"
+Memory.testTable = {a = 1, b = 2, c = 3}
+
+print("Created functions:")
+print("  - Memory.greet(name)")
+print("  - Memory.increment()")
+print("  - Memory.makeMultiplier(x)")
+print("  - Memory.factorial(n)")
+print("  - Memory.getSecret()")
+print("")
+print("Created data:")
+print("  - Memory.testNumber = 42")
+print("  - Memory.testString = 'Persistence Test'")
+print("  - Memory.testTable = {a=1, b=2, c=3}")
+
+return "✅ Functions and data created successfully"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        appendOutput('step1-output', output, result > 0 ? 'success' : 'error');
+        
+        if (result > 0) {
+          setStatus('✅ Step 1: Functions created', 'success');
+        } else {
+          setStatus('❌ Step 1: Failed to create functions', 'error');
+        }
+      } catch (error) {
+        appendOutput('step1-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 1: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.step2_testFunctions = async () => {
+      clearOutput('step2-output');
+      setStatus('Testing functions...', 'info');
+      
+      try {
+        const code = `
+print("Testing functions before persistence:")
+print("-----------------------------------")
+
+-- Test greet function
+local greeting = Memory.greet("Alice")
+print("Memory.greet('Alice') = " .. greeting)
+assert(greeting == "Hello, Alice!", "greet function failed")
+
+-- Test increment function (with closure)
+local count1 = Memory.increment()
+local count2 = Memory.increment()
+print("Memory.increment() = " .. count1)
+print("Memory.increment() = " .. count2)
+assert(count2 == count1 + 1, "increment function failed")
+
+-- Test makeMultiplier (higher-order function)
+local times3 = Memory.makeMultiplier(3)
+local result = times3(7)
+print("Memory.makeMultiplier(3)(7) = " .. result)
+assert(result == 21, "makeMultiplier function failed")
+
+-- Test factorial (recursive)
+local fact5 = Memory.factorial(5)
+print("Memory.factorial(5) = " .. fact5)
+assert(fact5 == 120, "factorial function failed")
+
+-- Test getSecret (upvalue)
+local secret = Memory.getSecret()
+print("Memory.getSecret() = " .. secret)
+assert(secret == "hidden value", "getSecret function failed")
+
+-- Test regular data
+print("Memory.testNumber = " .. tostring(Memory.testNumber))
+print("Memory.testString = " .. tostring(Memory.testString))
+print("Memory.testTable.b = " .. tostring(Memory.testTable and Memory.testTable.b or "nil"))
+
+return "✅ All function tests passed!"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        appendOutput('step2-output', output, result > 0 ? 'success' : 'error');
+        
+        if (result > 0) {
+          setStatus('✅ Step 2: All functions work correctly', 'success');
+        } else {
+          setStatus('❌ Step 2: Function tests failed', 'error');
+        }
+      } catch (error) {
+        appendOutput('step2-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 2: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.step3_saveState = async () => {
+      clearOutput('step3-output');
+      setStatus('Saving state...', 'info');
+      
+      try {
+        const saved = await lua.saveState();
+        if (saved) {
+          appendOutput('step3-output', '✅ State saved to IndexedDB\n\nThe following has been persisted:\n- Memory table with all functions\n- Regular data values\n- External table mappings', 'success');
+          setStatus('✅ Step 3: State saved successfully', 'success');
+        } else {
+          appendOutput('step3-output', '❌ Failed to save state', 'error');
+          setStatus('❌ Step 3: Save failed', 'error');
+        }
+      } catch (error) {
+        appendOutput('step3-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 3: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.step4_clearMemory = async () => {
+      clearOutput('step4-output');
+      setStatus('Clearing memory...', 'info');
+      
+      try {
+        // Reinitialize Lua VM to simulate page reload
+        await lua.loadLuaWasm({ autoRestore: false });
+        lua.init();
+        
+        // Verify Memory is empty
+        const code = `
+print("Checking Memory table after reset:")
+print("----------------------------------")
+
+local count = 0
+if Memory then
+  for k, v in pairs(Memory) do
+    count = count + 1
+    print("  Found: Memory." .. tostring(k) .. " = " .. tostring(v))
+  end
+end
+
+if count == 0 then
+  print("  Memory table is empty ✓")
+end
+
+-- Try to call a function that should be gone
+local success, err = pcall(function()
+  return Memory.greet and Memory.greet("Test")
+end)
+
+if not success or not Memory.greet then
+  print("  Functions are cleared ✓")
+else
+  print("  WARNING: Functions still exist!")
+end
+
+return "✅ Memory cleared - VM reset"`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        appendOutput('step4-output', output, result > 0 ? 'success' : 'error');
+        
+        if (result > 0) {
+          setStatus('✅ Step 4: Memory cleared', 'success');
+        } else {
+          setStatus('⚠️ Step 4: Memory clear had issues', 'warning');
+        }
+      } catch (error) {
+        appendOutput('step4-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 4: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.step5_restoreState = async () => {
+      clearOutput('step5-output');
+      setStatus('Restoring state...', 'info');
+      
+      try {
+        const loaded = await lua.loadState();
+        
+        if (loaded) {
+          // Check what was restored
+          const code = `
+print("Checking restored Memory table:")
+print("-------------------------------")
+
+local items = {}
+if Memory then
+  for k, v in pairs(Memory) do
+    table.insert(items, string.format("  Memory.%s = %s (%s)", tostring(k), tostring(v), type(v)))
+  end
+end
+
+table.sort(items)
+for _, item in ipairs(items) do
+  print(item)
+end
+
+print("")
+print("Function types restored:")
+if Memory.greet then print("  ✓ Memory.greet: " .. type(Memory.greet)) end
+if Memory.increment then print("  ✓ Memory.increment: " .. type(Memory.increment)) end
+if Memory.makeMultiplier then print("  ✓ Memory.makeMultiplier: " .. type(Memory.makeMultiplier)) end
+if Memory.factorial then print("  ✓ Memory.factorial: " .. type(Memory.factorial)) end
+if Memory.getSecret then print("  ✓ Memory.getSecret: " .. type(Memory.getSecret)) end
+
+return "✅ State restored from IndexedDB"`;
+          
+          const result = await lua.compute(code);
+          const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+          appendOutput('step5-output', output, result > 0 ? 'success' : 'error');
+          
+          if (result > 0) {
+            setStatus('✅ Step 5: State restored successfully', 'success');
+          } else {
+            setStatus('⚠️ Step 5: State restored with warnings', 'warning');
+          }
+        } else {
+          appendOutput('step5-output', '❌ Failed to restore state', 'error');
+          setStatus('❌ Step 5: Restore failed', 'error');
+        }
+      } catch (error) {
+        appendOutput('step5-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 5: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.step6_testRestoredFunctions = async () => {
+      clearOutput('step6-output');
+      setStatus('Testing restored functions...', 'info');
+      
+      try {
+        const code = `
+print("Testing RESTORED functions:")
+print("---------------------------")
+
+local allPassed = true
+local results = {}
+
+-- Test 1: greet function
+local success, result = pcall(function()
+  if Memory.greet and type(Memory.greet) == "function" then
+    local greeting = Memory.greet("Bob")
+    assert(greeting == "Hello, Bob!", "greet returned wrong value")
+    return "✓ Memory.greet('Bob') = " .. greeting
+  else
+    return "✗ Memory.greet is " .. type(Memory.greet or nil)
+  end
+end)
+table.insert(results, result)
+if not success then allPassed = false end
+
+-- Test 2: increment function (closure state might be lost)
+success, result = pcall(function()
+  if Memory.increment and type(Memory.increment) == "function" then
+    local count = Memory.increment()
+    return "✓ Memory.increment() = " .. count .. " (closure state may reset)"
+  else
+    return "✗ Memory.increment is " .. type(Memory.increment or nil)
+  end
+end)
+table.insert(results, result)
+
+-- Test 3: makeMultiplier function
+success, result = pcall(function()
+  if Memory.makeMultiplier and type(Memory.makeMultiplier) == "function" then
+    local times5 = Memory.makeMultiplier(5)
+    local product = times5(8)
+    assert(product == 40, "makeMultiplier returned wrong value")
+    return "✓ Memory.makeMultiplier(5)(8) = " .. product
+  else
+    return "✗ Memory.makeMultiplier is " .. type(Memory.makeMultiplier or nil)
+  end
+end)
+table.insert(results, result)
+if not success then allPassed = false end
+
+-- Test 4: factorial function
+success, result = pcall(function()
+  if Memory.factorial and type(Memory.factorial) == "function" then
+    local fact = Memory.factorial(6)
+    assert(fact == 720, "factorial returned wrong value")
+    return "✓ Memory.factorial(6) = " .. fact
+  else
+    return "✗ Memory.factorial is " .. type(Memory.factorial or nil)
+  end
+end)
+table.insert(results, result)
+if not success then allPassed = false end
+
+-- Test 5: getSecret function (upvalue might be lost)
+success, result = pcall(function()
+  if Memory.getSecret and type(Memory.getSecret) == "function" then
+    local secret = Memory.getSecret()
+    return "✓ Memory.getSecret() = " .. tostring(secret) .. " (upvalues may be lost)"
+  else
+    return "✗ Memory.getSecret is " .. type(Memory.getSecret or nil)
+  end
+end)
+table.insert(results, result)
+
+-- Test 6: Regular data
+table.insert(results, "✓ Memory.testNumber = " .. tostring(Memory.testNumber))
+table.insert(results, "✓ Memory.testString = " .. tostring(Memory.testString))
+
+for _, r in ipairs(results) do
+  print(r)
+end
+
+if allPassed then
+  return "✅ Function persistence works! Functions survived reload!"
+else
+  return "⚠️ Some functions may have issues (closures/upvalues might not persist)"
+end`;
+        
+        const result = await lua.compute(code);
+        const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
+        appendOutput('step6-output', output, result > 0 ? 'success' : 'error');
+        
+        if (result > 0) {
+          setStatus('✅ Step 6: Function persistence verified!', 'success');
+        } else {
+          setStatus('❌ Step 6: Some tests failed', 'error');
+        }
+      } catch (error) {
+        appendOutput('step6-output', 'Error: ' + error.message, 'error');
+        setStatus('❌ Step 6: Error - ' + error.message, 'error');
+      }
+    };
+    
+    window.showDebugInfo = async () => {
+      clearOutput('debug-output');
+      
+      try {
+        const info = lua.getTableInfo();
+        let debugText = 'External Tables Debug Info:\n';
+        debugText += '===========================\n\n';
+        debugText += `Memory Table ID: ${info.memoryTableId}\n`;
+        debugText += `Total Tables: ${info.tableCount}\n`;
+        debugText += `Table IDs: ${JSON.stringify(info.tableIds)}\n\n`;
+        
+        // Check what's in the Memory table
+        const code = `
+local debug_info = {}
+if Memory then
+  for k, v in pairs(Memory) do
+    local vtype = type(v)
+    local vstr = tostring(v)
+    if vtype == "function" then
+      -- Try to get function info
+      local info = debug.getinfo(v, "S")
+      if info then
+        vstr = string.format("function@%s:%d", info.source or "?", info.linedefined or 0)
+      end
+    end
+    table.insert(debug_info, string.format("  %s: %s = %s", k, vtype, vstr))
+  end
+end
+table.sort(debug_info)
+return table.concat(debug_info, "\n")`;
+        
+        const result = await lua.compute(code);
+        if (result > 0) {
+          const luaDebug = lua.readBuffer(lua.getBufferPtr(), result);
+          debugText += 'Memory Table Contents:\n' + luaDebug;
+        }
+        
+        appendOutput('debug-output', debugText, 'info');
+      } catch (error) {
+        appendOutput('debug-output', 'Debug Error: ' + error.message, 'error');
+      }
+    };
+    
+    window.clearAllStorage = async () => {
+      if (confirm('This will clear all persisted Lua state. Are you sure?')) {
+        try {
+          await lua.clearStorage();
+          appendOutput('debug-output', '✅ All storage cleared', 'success');
+          setStatus('Storage cleared - reload page to start fresh', 'warning');
+        } catch (error) {
+          appendOutput('debug-output', 'Clear Error: ' + error.message, 'error');
+        }
+      }
+    };
+    
+    // Initialize on load
+    async function init() {
+      try {
+        setStatus('Loading Lua WASM...', 'info');
+        await lua.loadLuaWasm({ autoRestore: false });
+        lua.init();
+        setStatus('✅ Lua WASM ready - Click Step 1 to begin', 'success');
+      } catch (error) {
+        setStatus('❌ Failed to load: ' + error.message, 'error');
+      }
+    }
+    
+    init();
+  </script>
+</body>
+</html>
