@@ -13,6 +13,7 @@ var io_buffer: [IO_BUFFER_SIZE]u8 align(16) = undefined;
 var heap: [TOTAL_MEMORY]u8 align(4096) = undefined;
 var global_lua_state: ?*lua.lua_State = null;
 var lua_memory_used: usize = 0;
+var memory_table_id: u32 = 0;
 
 extern fn js_ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int;
 extern fn js_ext_table_get(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]u8, max_len: usize) c_int;
@@ -59,6 +60,7 @@ export fn init() i32 {
     ext_table.init_ext_table(&io_buffer, IO_BUFFER_SIZE);
     ext_table.setup_ext_table_library(L.?);
     setup_print_override(L.?);
+    setup_memory_global(L.?);
 
     return 0;
 }
@@ -66,6 +68,11 @@ export fn init() i32 {
 fn setup_print_override(L: *lua.lua_State) void {
     lua.pushcfunction(L, @as(lua.c.lua_CFunction, @ptrCast(&output_capture.custom_print)));
     lua.setglobal(L, "print");
+}
+
+fn setup_memory_global(L: *lua.lua_State) void {
+    memory_table_id = ext_table.create_table(L);
+    lua.setglobal(L, "Memory");
 }
 
 pub fn ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int {
@@ -144,6 +151,24 @@ export fn get_memory_stats(stats_ptr: *MemoryStats) void {
 }
 
 export fn run_gc() void {}
+
+export fn attach_memory_table(table_id: u32) void {
+    if (global_lua_state == null) return;
+    if (table_id == 0) return;
+
+    const L = global_lua_state.?;
+    ext_table.attach_table(L, table_id);
+    lua.setglobal(L, "Memory");
+    memory_table_id = table_id;
+}
+
+export fn get_memory_table_id() u32 {
+    return memory_table_id;
+}
+
+export fn sync_external_table_counter(next_id: u32) void {
+    ext_table.sync_counter(next_id);
+}
 
 pub fn main() void {
     // Empty main - required for WASI target

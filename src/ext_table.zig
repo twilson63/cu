@@ -20,6 +20,50 @@ pub fn init_ext_table(buffer: [*]u8, buffer_size: usize) void {
     io_buffer_size = buffer_size;
 }
 
+fn ensure_metatable(L: *lua.lua_State) void {
+    const meta_type: [*:0]const u8 = "ext_table_mt";
+    if (lua.luaL_newmetatable(L, meta_type) != 0) {
+        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_index_impl)));
+        lua.setfield(L, -2, "__index");
+
+        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_newindex_impl)));
+        lua.setfield(L, -2, "__newindex");
+
+        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_len_impl)));
+        lua.setfield(L, -2, "__len");
+    }
+
+    _ = lua.setmetatable(L, -2);
+}
+
+fn push_ext_table(L: *lua.lua_State, table_id: u32) void {
+    lua.newtable(L);
+    lua.pushinteger(L, table_id);
+    lua.setfield(L, -2, "__ext_table_id");
+    ensure_metatable(L);
+}
+
+pub fn create_table(L: *lua.lua_State) u32 {
+    const table_id = external_table_counter;
+    external_table_counter += 1;
+    push_ext_table(L, table_id);
+    return table_id;
+}
+
+pub fn attach_table(L: *lua.lua_State, table_id: u32) void {
+    if (table_id == 0) return;
+    push_ext_table(L, table_id);
+    if (table_id >= external_table_counter) {
+        external_table_counter = table_id + 1;
+    }
+}
+
+pub fn sync_counter(next_id: u32) void {
+    if (next_id > external_table_counter) {
+        external_table_counter = next_id;
+    }
+}
+
 fn serialize_key(L: *lua.lua_State, idx: c_int, buffer: [*]u8, max_len: usize) !usize {
     if (lua.isstring(L, idx)) {
         var key_len: usize = 0;
@@ -61,28 +105,7 @@ fn serialize_key(L: *lua.lua_State, idx: c_int, buffer: [*]u8, max_len: usize) !
 }
 
 fn ext_table_new_impl(L: *lua.lua_State) c_int {
-    const id = external_table_counter;
-    external_table_counter += 1;
-
-    lua.newtable(L);
-
-    lua.pushinteger(L, id);
-    lua.setfield(L, -2, "__ext_table_id");
-
-    const meta_type: [*:0]const u8 = "ext_table_mt";
-    if (lua.luaL_newmetatable(L, meta_type) != 0) {
-        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_index_impl)));
-        lua.setfield(L, -2, "__index");
-
-        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_newindex_impl)));
-        lua.setfield(L, -2, "__newindex");
-
-        lua.pushcfunction(L, @as(c.lua_CFunction, @ptrCast(&ext_table_len_impl)));
-        lua.setfield(L, -2, "__len");
-    }
-
-    _ = lua.setmetatable(L, -2);
-
+    _ = create_table(L);
     return 1;
 }
 

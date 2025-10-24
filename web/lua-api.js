@@ -594,6 +594,10 @@ export function getTableInfo() {
   return info;
 }
 
+export function getMemoryTableId() {
+  return memoryTableId;
+}
+
 export default {
   loadLuaWasm,
   init,
@@ -608,5 +612,6 @@ export default {
   saveState,
   loadState,
   clearPersistedState,
-  getTableInfo
+  getTableInfo,
+  getMemoryTableId
 };

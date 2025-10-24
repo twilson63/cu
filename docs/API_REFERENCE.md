@@ -8,19 +8,22 @@ The main interface for interacting with the Lua WASM module.
 
 #### Functions
 
-##### `loadLuaWasm()`
-Loads and initializes the Lua WebAssembly module.
+##### `loadLuaWasm(options)`
+Loads and instantiates the Lua WebAssembly module.
+
+**Parameters:**
+- `options.autoRestore` (boolean, default `true`): Preload persisted tables and metadata before initialization
 
 **Returns:** `Promise<boolean>` - Success status
 
 **Example:**
 ```javascript
 import lua from './lua-api.js';
-await lua.loadLuaWasm();
+await lua.loadLuaWasm({ autoRestore: true });
 ```
 
 ##### `init()`
-Initializes the Lua VM. Must be called after `loadLuaWasm()`.
+Initializes the Lua VM and guarantees `_G.Memory` points to the active external table (reattached automatically when persisted state exists). Must be called after `loadLuaWasm()`.
 
 **Returns:** `number` - 0 on success, -1 on failure
 
@@ -57,25 +60,30 @@ Deserializes the result from the buffer.
 **Returns:** `{ output: string, result: any }` - Deserialized result
 
 ##### `saveState()`
-Saves all external tables to IndexedDB.
+Serializes all external tables and metadata (including `memoryTableId` and `nextTableId`) to IndexedDB.
 
 **Returns:** `Promise<boolean>` - Success status
 
 ##### `loadState()`
-Loads external tables from IndexedDB.
+Reloads external tables and metadata from IndexedDB, reattaching `_G.Memory` and resynchronizing Zig table counters.
 
 **Returns:** `Promise<boolean>` - Success status
 
 ##### `getTableInfo()`
 Returns information about current external tables.
 
-**Returns:** `{ tableCount: number, tables: Array }` - Table information
+**Returns:** `{ tableCount: number, memoryTableId: number|null, nextTableId: number, tables: Array }`
+
+##### `getMemoryTableId()`
+Returns the numeric identifier backing `_G.Memory` for debugging and tooling.
+
+**Returns:** `number|null` - Persisted table ID or `null` if uninitialized
 
 ## Lua API
 
 ### Module: ext
 
-External table functionality accessible from Lua.
+External table functionality accessible from Lua. The runtime now exposes a persistent global `_G.Memory` pointing to an external table that survives save/load cycles.
 
 #### Functions
 
