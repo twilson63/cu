@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lua Deserialization Test</title>
+  <style>
+    body { font-family: monospace; margin: 20px; }
+    pre { background: #f0f0f0; padding: 10px; }
+    .test { margin: 20px 0; border: 1px solid #ccc; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Lua Deserialization Test</h1>
+  <button onclick="runTests()">Run All Tests</button>
+  <div id="results"></div>
+  
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    window.runTests = async () => {
+      const results = document.getElementById('results');
+      results.innerHTML = '<h2>Running tests...</h2>';
+      
+      try {
+        // Load and init
+        await lua.loadLuaWasm();
+        lua.init();
+        
+        // Test cases
+        const tests = [
+          { code: 'return 42', expected: 42, desc: 'Integer return' },
+          { code: 'return 3.14159', expected: 3.14159, desc: 'Float return' },
+          { code: 'return "Hello, Lua!"', expected: "Hello, Lua!", desc: 'String return' },
+          { code: 'return true', expected: true, desc: 'Boolean true' },
+          { code: 'return false', expected: false, desc: 'Boolean false' },
+          { code: 'return nil', expected: null, desc: 'Nil return' },
+          { code: 'print("Hello"); return 123', expectedOutput: "Hello\n", expected: 123, desc: 'Print + return' },
+          { code: 'for i=1,3 do print(i) end; return "done"', expectedOutput: "1\n2\n3\n", expected: "done", desc: 'Loop with prints' },
+        ];
+        
+        for (const test of tests) {
+          const div = document.createElement('div');
+          div.className = 'test';
+          
+          try {
+            const resultBytes = lua.compute(test.code);
+            const { output, result } = lua.readResult(lua.getBufferPtr(), resultBytes);
+            
+            let status = '✅ PASS';
+            let details = '';
+            
+            // Check return value
+            if (result !== test.expected) {
+              status = '❌ FAIL';
+              details += `Expected: ${JSON.stringify(test.expected)}, Got: ${JSON.stringify(result)}\n`;
+            }
+            
+            // Check output if specified
+            if (test.expectedOutput !== undefined && output !== test.expectedOutput) {
+              status = '❌ FAIL';
+              details += `Expected output: ${JSON.stringify(test.expectedOutput)}, Got: ${JSON.stringify(output)}\n`;
+            }
+            
+            div.innerHTML = `
+              <strong>${status} ${test.desc}</strong><br>
+              Code: <code>${test.code}</code><br>
+              ${output ? `Output: <pre>${output}</pre>` : ''}
+              Result: ${JSON.stringify(result)}<br>
+              ${details ? `<span style="color:red">${details}</span>` : ''}
+            `;
+          } catch (error) {
+            div.innerHTML = `
+              <strong>❌ ERROR ${test.desc}</strong><br>
+              Code: <code>${test.code}</code><br>
+              Error: ${error.message}
+            `;
+          }
+          
+          results.appendChild(div);
+        }
+        
+      } catch (error) {
+        results.innerHTML = `<h2>❌ Failed to initialize: ${error.message}</h2>`;
+      }
+    };
+  </script>
+</body>
+</html>

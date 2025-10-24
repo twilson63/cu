@@ -1,0 +1,49 @@
+const std = @import("std");
+
+pub fn build(b: *std.Build) void {
+    const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
+    
+    // Create an executable that outputs WASM
+    const exe = b.addExecutable(.{
+        .name = "lua",
+        .root_source_file = b.path("src/main.zig"),
+        .target = b.resolveTargetQuery(.{
+            .cpu_arch = .wasm32,
+            .os_tag = .wasi,
+        }),
+        .optimize = optimize,
+    });
+    
+    // Add include paths
+    exe.addIncludePath(b.path("src"));
+    exe.addIncludePath(b.path("src/lua"));
+    
+    // Link libc
+    exe.linkLibC();
+    
+    // Define macros
+    exe.root_module.addCMacro("_WASI_EMULATED_SIGNAL", "");
+    exe.root_module.addCMacro("_WASI_EMULATED_PROCESS_CLOCKS", "");
+    
+    // Add Lua C source files
+    const lua_sources = [_][]const u8{
+        "lapi", "lauxlib", "lbaselib", "lcode", "lcorolib", "lctype",
+        "ldblib", "ldebug", "ldo", "ldump", "lfunc", "lgc", "linit",
+        "liolib", "llex", "lmathlib", "lmem", "loadlib", "lobject",
+        "lopcodes", "loslib", "lparser", "lstate", "lstring", "lstrlib",
+        "ltable", "ltablib", "ltm", "lundump", "lutf8lib", "lvm", "lzio",
+    };
+    
+    // Add pre-compiled object files
+    for (lua_sources) |src| {
+        const obj_path = b.fmt(".build/{s}.o", .{src});
+        exe.addObjectFile(b.path(obj_path));
+    }
+    
+    // Set output to web directory
+    const install = b.addInstallArtifact(exe, .{});
+    install.dest_dir = .{ .custom = "web" };
+    
+    b.getInstallStep().dependOn(&install.step);
+}

@@ -1,0 +1,51 @@
+{
+  "name": "lua-persistent-demo",
+  "version": "1.0.0",
+  "description": "Lua interpreter in WebAssembly with persistent external memory support",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "demo/lua-api.js",
+    "demo/lua-deserializer.js",
+    "demo/lua-persistence.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "./build.sh",
+    "demo": "cd demo && python3 -m http.server 8000",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright test && playwright show-report",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/twilson63/lua-persistent-demo.git"
+  },
+  "keywords": [
+    "lua",
+    "webassembly",
+    "wasm",
+    "interpreter",
+    "persistent",
+    "indexeddb",
+    "zig"
+  ],
+  "author": "Tom Wilson <tom@hyper.io>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/twilson63/lua-persistent-demo/issues"
+  },
+  "homepage": "https://github.com/twilson63/lua-persistent-demo#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0"
+  }
+}

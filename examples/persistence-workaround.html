@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lua Persistence - Complete Workaround</title>
+  <style>
+    body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #e0e0e0; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h2 { color: #4ec9b0; margin-top: 30px; }
+    button { 
+      margin: 5px; 
+      padding: 10px 20px; 
+      background: #4ec9b0; 
+      border: none; 
+      color: #000; 
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #6ed9c0; }
+    .editor { 
+      width: 100%; 
+      min-height: 150px; 
+      background: #252526; 
+      color: #d4d4d4; 
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #3e3e42;
+      font-family: monospace;
+    }
+    pre { background: #252526; padding: 15px; border-radius: 5px; }
+    .info { background: #1a3d4d; color: #6fc9ef; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    .success { background: #1a4d2e; color: #6fc96f; }
+    .warning { background: #4d4d1a; color: #efef6f; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌙 Lua Persistence - Complete Workaround</h1>
+    
+    <div class="info">
+      <strong>Current Limitation:</strong> When external tables are loaded from IndexedDB, 
+      the Lua variable references are lost because each ext.table() creates a new ID.
+      <br><br>
+      <strong>Workaround:</strong> We save the variable name → table ID mappings, 
+      then recreate the references after loading. The data remains intact in JavaScript memory.
+    </div>
+
+    <h2>Complete Workflow Example</h2>
+
+    <h3>Step 1: Initialize Helper Functions</h3>
+    <button onclick="loadHelpers()">Load Helper Functions</button>
+    
+    <h3>Step 2: Create Your Data</h3>
+    <textarea id="createData" class="editor">-- Create some persistent data
+player = ext.table()
+player.name = "Hero"
+player.level = 10
+player.health = 100
+player.inventory = "sword,shield,potion"
+
+game = ext.table()
+game.score = 5000
+game.stage = "castle"
+game.time = os.date()
+
+settings = ext.table()
+settings.volume = 80
+settings.difficulty = "normal"
+
+print("Created 3 tables with data")
+return "Data created"</textarea>
+    <button onclick="execute('createData')">Create Data</button>
+
+    <h3>Step 3: Save Everything</h3>
+    <p>This saves both the data AND the variable mappings</p>
+    <button onclick="saveComplete()">💾 Save Complete State</button>
+
+    <h3>Step 4: Simulate Page Refresh</h3>
+    <p>This clears the Lua state but keeps the external tables in JS</p>
+    <button onclick="simulateRefresh()">🔄 Simulate Refresh</button>
+    <button onclick="location.reload()">🔄 Real Page Refresh</button>
+
+    <h3>Step 5: Restore Everything</h3>
+    <p>First load from IndexedDB, then restore the Lua references</p>
+    <button onclick="restoreComplete()">📂 Restore Complete State</button>
+
+    <h3>Step 6: Verify Data</h3>
+    <textarea id="verifyData" class="editor">-- Check if our data is back
+if player then
+  print("Player data:")
+  print("  Name: " .. player.name)
+  print("  Level: " .. player.level)
+  print("  Health: " .. player.health)
+else
+  print("Player not found!")
+end
+
+if game then
+  print("\\nGame data:")
+  print("  Score: " .. game.score)
+  print("  Stage: " .. game.stage)
+end
+
+if settings then
+  print("\\nSettings:")
+  print("  Volume: " .. settings.volume)
+end
+
+return "Verification complete"</textarea>
+    <button onclick="execute('verifyData')">Verify Data</button>
+
+    <h2>Output</h2>
+    <pre id="output">Ready to start...</pre>
+
+    <h2>Saved Mappings</h2>
+    <pre id="mappings" class="info">No mappings saved yet</pre>
+  </div>
+
+  <script type="module">
+    import lua from './lua-api.js';
+    import { luaRestoreHelpers } from './lua-restore-helper.js';
+    
+    let initialized = false;
+    let savedMappings = '';
+    
+    async function init() {
+      if (!initialized) {
+        await lua.loadLuaWasm();
+        lua.init();
+        initialized = true;
+        updateOutput('Lua initialized');
+        
+        // Try to load saved mappings from localStorage
+        const stored = localStorage.getItem('lua_mappings');
+        if (stored) {
+          savedMappings = stored;
+          updateMappings(savedMappings);
+          updateOutput('Found saved mappings in localStorage');
+        }
+      }
+    }
+    
+    function updateOutput(text) {
+      document.getElementById('output').textContent = text;
+    }
+    
+    function updateMappings(mappings) {
+      document.getElementById('mappings').textContent = 
+        mappings ? `Saved mappings: ${mappings}` : 'No mappings saved yet';
+    }
+    
+    window.loadHelpers = async () => {
+      await init();
+      lua.compute(luaRestoreHelpers);
+      updateOutput('Helper functions loaded');
+    };
+    
+    window.execute = async (id) => {
+      await init();
+      const code = document.getElementById(id).value;
+      const result = lua.compute(code);
+      
+      if (result > 0) {
+        const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+        let text = '';
+        if (output) text += output;
+        if (returnValue) text += '\\nReturn: ' + JSON.stringify(returnValue);
+        updateOutput(text);
+      } else if (result < 0) {
+        updateOutput('Error: ' + lua.readBuffer(lua.getBufferPtr(), -result));
+      }
+    };
+    
+    window.saveComplete = async () => {
+      await init();
+      
+      // First, save the mappings
+      const result = lua.compute('return save_mappings_to_storage()');
+      if (result > 0) {
+        const { result: mappings } = lua.readResult(lua.getBufferPtr(), result);
+        savedMappings = mappings;
+        localStorage.setItem('lua_mappings', savedMappings);
+        updateMappings(savedMappings);
+      }
+      
+      // Then save to IndexedDB
+      const saved = await lua.saveState();
+      if (saved) {
+        updateOutput('✅ Complete state saved (data + mappings)');
+      } else {
+        updateOutput('❌ Failed to save state');
+      }
+    };
+    
+    window.simulateRefresh = async () => {
+      // Reinit Lua (clears Lua state but not external tables)
+      initialized = false;
+      await init();
+      updateOutput('Simulated refresh - Lua state cleared, but external tables remain in JS');
+    };
+    
+    window.restoreComplete = async () => {
+      await init();
+      
+      // First load helpers
+      lua.compute(luaRestoreHelpers);
+      
+      // Load from IndexedDB
+      const loaded = await lua.loadState();
+      if (!loaded) {
+        updateOutput('❌ Failed to load from IndexedDB');
+        return;
+      }
+      
+      // Restore the mappings
+      if (savedMappings) {
+        const code = \`restore_table_mappings("\${savedMappings}")\`;
+        lua.compute(code);
+        updateOutput('✅ Complete state restored!\\nYour variables are back and pointing to the correct data.');
+      } else {
+        updateOutput('⚠️ Data loaded but no mappings found.\\nYou need to manually recreate table references.');
+      }
+    };
+    
+    // Auto-init
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

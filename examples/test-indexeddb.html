@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lua Persistent Memory - IndexedDB Demo</title>
+  <style>
+    body { 
+      font-family: 'Monaco', 'Menlo', monospace; 
+      margin: 20px; 
+      background: #1e1e1e; 
+      color: #e0e0e0; 
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 { color: #4ec9b0; }
+    h2 { color: #9cdcfe; margin-top: 30px; }
+    button { 
+      margin: 5px; 
+      padding: 10px 20px; 
+      background: #4ec9b0; 
+      border: none; 
+      color: #000; 
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button:hover { background: #6ed9c0; }
+    button.danger { background: #d4534f; }
+    button.danger:hover { background: #e4635f; }
+    .editor {
+      width: 100%;
+      min-height: 150px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid #3e3e42;
+      padding: 10px;
+      font-family: 'Monaco', monospace;
+      font-size: 13px;
+      margin: 10px 0;
+    }
+    pre { 
+      background: #252526; 
+      padding: 10px; 
+      border-radius: 5px; 
+      border-left: 3px solid #4ec9b0;
+    }
+    .status { 
+      padding: 10px; 
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .success { background: #1a4d2e; color: #6fc96f; }
+    .error { background: #4d1a1a; color: #f97777; }
+    .info { background: #1a3d4d; color: #6fc9ef; }
+    .table-info {
+      background: #252526;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌙 Lua Persistent Memory - IndexedDB Demo</h1>
+  <p>This demo shows how external tables can be persisted to IndexedDB and restored after page refresh.</p>
+
+  <h2>Step 1: Create Some Data</h2>
+  <textarea id="step1" class="editor">-- Create persistent data
+userData = ext.table()
+userData.name = "Alice"
+userData.score = 1000
+userData.level = 5
+userData.lastLogin = os.date()
+
+gameState = ext.table()
+gameState.currentMap = "level_1"
+gameState.enemies = 10
+gameState.powerups = 3
+
+print("Created userData and gameState tables")
+return "Data created successfully"</textarea>
+  <button onclick="executeCode('step1')">Execute Step 1</button>
+
+  <h2>Step 2: Save to IndexedDB</h2>
+  <button onclick="saveToIndexedDB()">💾 Save State to IndexedDB</button>
+  <button onclick="showTableInfo()">📊 Show Current Tables</button>
+
+  <h2>Step 3: Test Persistence</h2>
+  <textarea id="step3" class="editor">-- Try to access the data
+if userData then
+  print("userData exists!")
+  print("  Name: " .. userData.name)
+  print("  Score: " .. userData.score)
+  print("  Level: " .. userData.level)
+  print("  Last Login: " .. userData.lastLogin)
+else
+  print("userData not found!")
+end
+
+if gameState then
+  print("\\ngameState exists!")
+  print("  Map: " .. gameState.currentMap)
+  print("  Enemies: " .. gameState.enemies)
+  print("  Powerups: " .. gameState.powerups)
+else
+  print("gameState not found!")
+end
+
+return "Data check complete"</textarea>
+  <button onclick="executeCode('step3')">Execute Step 3</button>
+
+  <h2>Step 4: Simulate Page Refresh</h2>
+  <p>After saving, you can refresh the page and click "Load State" to restore your data!</p>
+  <button onclick="loadFromIndexedDB()">📂 Load State from IndexedDB</button>
+  <button onclick="location.reload()">🔄 Refresh Page</button>
+  <button class="danger" onclick="clearIndexedDB()">🗑️ Clear All Persisted Data</button>
+
+  <h2>Output</h2>
+  <pre id="output">Ready to start...</pre>
+
+  <h2>Status</h2>
+  <div id="status" class="status info">Waiting for commands...</div>
+
+  <h2>Current Tables Info</h2>
+  <div id="tableInfo" class="table-info">No tables loaded</div>
+
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    let initialized = false;
+    
+    async function init() {
+      if (!initialized) {
+        updateStatus('Initializing Lua WASM...', 'info');
+        await lua.loadLuaWasm();
+        lua.init();
+        initialized = true;
+        updateStatus('Lua WASM initialized', 'success');
+        
+        // Try to load saved state automatically
+        const loaded = await lua.loadState();
+        if (loaded) {
+          updateStatus('Restored persisted state from IndexedDB', 'success');
+          showTableInfo();
+        }
+      }
+    }
+    
+    function updateStatus(message, type = 'info') {
+      const status = document.getElementById('status');
+      status.className = `status ${type}`;
+      status.textContent = message;
+    }
+    
+    function updateOutput(text) {
+      document.getElementById('output').textContent = text;
+    }
+    
+    window.executeCode = async (stepId) => {
+      await init();
+      
+      const code = document.getElementById(stepId).value;
+      const result = lua.compute(code);
+      
+      if (result > 0) {
+        const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+        let outputText = '';
+        if (output) outputText += output;
+        if (returnValue) outputText += '\nReturn: ' + JSON.stringify(returnValue);
+        updateOutput(outputText);
+        updateStatus('Code executed successfully', 'success');
+      } else if (result < 0) {
+        const error = lua.readBuffer(lua.getBufferPtr(), -result);
+        updateOutput('Error: ' + error);
+        updateStatus('Execution failed', 'error');
+      } else {
+        updateOutput('(No output)');
+        updateStatus('Code executed', 'info');
+      }
+      
+      showTableInfo();
+    };
+    
+    window.saveToIndexedDB = async () => {
+      await init();
+      updateStatus('Saving to IndexedDB...', 'info');
+      
+      const saved = await lua.saveState();
+      if (saved) {
+        updateStatus('✅ State saved to IndexedDB successfully!', 'success');
+      } else {
+        updateStatus('❌ Failed to save state', 'error');
+      }
+    };
+    
+    window.loadFromIndexedDB = async () => {
+      await init();
+      updateStatus('Loading from IndexedDB...', 'info');
+      
+      const loaded = await lua.loadState();
+      if (loaded) {
+        updateStatus('✅ State loaded from IndexedDB successfully!', 'success');
+        updateOutput('State loaded. Run Step 3 to verify the data.');
+        showTableInfo();
+      } else {
+        updateStatus('❌ Failed to load state', 'error');
+      }
+    };
+    
+    window.clearIndexedDB = async () => {
+      if (!confirm('Are you sure you want to clear all persisted data?')) return;
+      
+      await init();
+      const cleared = await lua.clearPersistedState();
+      if (cleared) {
+        updateStatus('✅ All persisted data cleared', 'success');
+        updateOutput('IndexedDB cleared');
+      } else {
+        updateStatus('❌ Failed to clear data', 'error');
+      }
+    };
+    
+    window.showTableInfo = async () => {
+      await init();
+      const info = lua.getTableInfo();
+      
+      let infoHtml = `<strong>Total Tables:</strong> ${info.tableCount}<br><br>`;
+      
+      for (const table of info.tables) {
+        infoHtml += `<strong>Table ${table.id}:</strong><br>`;
+        infoHtml += `  Size: ${table.size} entries<br>`;
+        infoHtml += `  Keys: ${table.keys.join(', ')}<br><br>`;
+      }
+      
+      if (info.tableCount === 0) {
+        infoHtml = 'No external tables in memory';
+      }
+      
+      document.getElementById('tableInfo').innerHTML = infoHtml;
+    };
+    
+    // Initialize on load
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

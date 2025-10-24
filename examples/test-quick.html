@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Quick Lua Test</title>
+</head>
+<body>
+  <h1>Quick Lua WASM Test</h1>
+  <button onclick="testLua()">Test Lua</button>
+  <pre id="output"></pre>
+  
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    window.testLua = async () => {
+      const output = document.getElementById('output');
+      output.textContent = 'Testing...\n';
+      
+      try {
+        output.textContent += 'Loading WASM...\n';
+        await lua.loadLuaWasm();
+        
+        output.textContent += 'Initializing Lua...\n';
+        const initResult = lua.init();
+        output.textContent += `Init result: ${initResult}\n`;
+        
+        output.textContent += '\nTesting compute(1+1)...\n';
+        const result1 = lua.compute('return 1+1');
+        output.textContent += `Result bytes: ${result1}\n`;
+        if (result1 > 0) {
+          const out1 = lua.readBuffer(lua.getBufferPtr(), result1);
+          output.textContent += `Output: ${out1}\n`;
+        }
+        
+        output.textContent += '\nTesting string return...\n';
+        const result2 = lua.compute('return "Hello Lua!"');
+        output.textContent += `Result bytes: ${result2}\n`;
+        if (result2 > 0) {
+          const out2 = lua.readBuffer(lua.getBufferPtr(), result2);
+          output.textContent += `Output: ${out2}\n`;
+        }
+        
+        output.textContent += '\n✅ Success! The web demo works!';
+        
+      } catch (error) {
+        output.textContent += `\n❌ Error: ${error.message}\n${error.stack}`;
+      }
+    };
+  </script>
+</body>
+</html>

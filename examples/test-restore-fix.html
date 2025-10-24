@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>External Table Restore Fix</title>
+  <style>
+    body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #e0e0e0; }
+    button { margin: 5px; padding: 10px 20px; background: #4ec9b0; border: none; color: #000; cursor: pointer; }
+    .editor { width: 100%; min-height: 100px; background: #252526; color: #d4d4d4; padding: 10px; margin: 10px 0; }
+    pre { background: #252526; padding: 10px; border-radius: 5px; }
+    .warning { background: #4d4d1a; color: #efef6f; padding: 10px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>External Table Restore Fix</h1>
+  
+  <div class="warning">
+    ⚠️ Current Limitation: When you load tables from IndexedDB, the Lua variable references are lost.
+    You need to recreate them using the table IDs.
+  </div>
+
+  <h2>Step 1: Create and Save</h2>
+  <textarea id="create" class="editor">-- Create some tables
+userData = ext.table()
+userData.name = "Alice"
+userData.score = 1000
+
+gameData = ext.table()
+gameData.level = 5
+
+-- Get the table IDs (we'll need these after reload)
+print("userData ID: " .. tostring(userData.__ext_table_id))
+print("gameData ID: " .. tostring(gameData.__ext_table_id))
+
+-- Save this mapping for later
+_G.saved_mappings = {
+  userData = userData.__ext_table_id,
+  gameData = gameData.__ext_table_id
+}
+
+return "Created tables"</textarea>
+  <button onclick="execute('create')">Execute & Create Tables</button>
+  <button onclick="saveState()">Save to IndexedDB</button>
+
+  <h2>Step 2: After Refresh</h2>
+  <textarea id="restore" class="editor">-- After loading from IndexedDB, we need to recreate references
+-- The data is there, but we need to reconnect to it
+
+-- First, let's see what tables exist
+local info = lua.getTableInfo()
+print("Found " .. info.tableCount .. " tables in memory")
+
+-- Manually recreate references
+-- In a real app, you'd save the ID mappings and restore them
+userData = ext.table()  -- This creates table 1
+gameData = ext.table()  -- This creates table 2
+
+-- Now test if data is there
+print("userData.name: " .. tostring(userData.name))
+print("gameData.level: " .. tostring(gameData.level))
+
+return "Attempted restore"</textarea>
+  <button onclick="loadState()">Load from IndexedDB</button>
+  <button onclick="execute('restore')">Execute Restore</button>
+  <button onclick="showTableInfo()">Show Table Info</button>
+
+  <h2>Output</h2>
+  <pre id="output">Ready...</pre>
+
+  <h2>Table Info</h2>
+  <pre id="tableInfo">No tables loaded</pre>
+
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    let initialized = false;
+    
+    async function init() {
+      if (!initialized) {
+        await lua.loadLuaWasm();
+        lua.init();
+        initialized = true;
+        console.log('Lua initialized');
+      }
+    }
+    
+    window.execute = async (id) => {
+      await init();
+      const code = document.getElementById(id).value;
+      const result = lua.compute(code);
+      
+      if (result > 0) {
+        const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+        let text = '';
+        if (output) text += output;
+        if (returnValue) text += '\nReturn: ' + JSON.stringify(returnValue);
+        document.getElementById('output').textContent = text;
+      } else if (result < 0) {
+        document.getElementById('output').textContent = 'Error: ' + lua.readBuffer(lua.getBufferPtr(), -result);
+      }
+      
+      showTableInfo();
+    };
+    
+    window.saveState = async () => {
+      await init();
+      const saved = await lua.saveState();
+      document.getElementById('output').textContent = saved ? 'Saved to IndexedDB' : 'Save failed';
+    };
+    
+    window.loadState = async () => {
+      await init();
+      const loaded = await lua.loadState();
+      document.getElementById('output').textContent = loaded ? 
+        'Loaded from IndexedDB. Now recreate your table references!' : 
+        'Load failed';
+      showTableInfo();
+    };
+    
+    window.showTableInfo = async () => {
+      await init();
+      const info = lua.getTableInfo();
+      let text = `Total tables: ${info.tableCount}\n\n`;
+      for (const table of info.tables) {
+        text += `Table ${table.id}: ${table.size} entries\n`;
+        text += `  Keys: ${table.keys.join(', ')}\n\n`;
+      }
+      document.getElementById('tableInfo').textContent = text || 'No tables';
+    };
+    
+    // Inject getTableInfo function into Lua
+    window.addEventListener('load', async () => {
+      await init();
+      
+      // Add a helper function to Lua
+      lua.compute(`
+        function lua.getTableInfo()
+          -- This is a mock - in reality we'd need to expose this from JS
+          return { tableCount = 0 }
+        end
+      `);
+    });
+  </script>
+</body>
+</html>

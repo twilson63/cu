@@ -1,0 +1,66 @@
+# Zig build artifacts
+.zig-cache/
+zig-out/
+.build/
+*.o
+*.a
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Backup files
+*.backup
+*.old
+*-fixed.*
+*.orig
+web/lua-backup.wasm
+web/lua-exports.wasm
+web/lua-test.wasm
+web/lua-library.wasm
+web/lua-processed.wasm
+web/*.wat.backup
+
+# Generated files
+src/main_with_refs.zig
+src/export_wrapper.zig
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Build artifacts
+*.wat
+*.wasm.map
+build.log
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment
+.env
+.env.local
+
+# Test coverage
+coverage/
+.nyc_output/

@@ -1,0 +1,123 @@
+/**
+ * Persistence layer for Lua external tables using IndexedDB
+ */
+
+const DB_NAME = 'LuaPersistentDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'externalTables';
+
+class LuaPersistence {
+  constructor() {
+    this.db = null;
+  }
+
+  /**
+   * Initialize IndexedDB
+   */
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onerror = () => reject(new Error('Failed to open IndexedDB'));
+
+      request.onsuccess = (event) => {
+        this.db = event.target.result;
+        resolve(this.db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+      };
+    });
+  }
+
+  /**
+   * Save all external tables to IndexedDB
+   * @param {Map} externalTables - Map of table ID to Map of key-value pairs
+   * @param {Object} metadata - Additional metadata (like variable mappings)
+   */
+  async saveTables(externalTables, metadata = {}) {
+    if (!this.db) await this.init();
+
+    const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    // Clear existing data
+    await new Promise((resolve, reject) => {
+      const clearRequest = store.clear();
+      clearRequest.onsuccess = resolve;
+      clearRequest.onerror = reject;
+    });
+
+    // Save each table
+    const promises = [];
+    for (const [tableId, tableData] of externalTables) {
+      // Convert Map to plain object for serialization
+      const serializedData = {
+        id: tableId,
+        data: Object.fromEntries(tableData)
+      };
+
+      promises.push(new Promise((resolve, reject) => {
+        const request = store.add(serializedData);
+        request.onsuccess = resolve;
+        request.onerror = reject;
+      }));
+    }
+
+    await Promise.all(promises);
+    console.log(`Saved ${externalTables.size} tables to IndexedDB`);
+  }
+
+  /**
+   * Load all external tables from IndexedDB
+   * @returns {Map} Map of table ID to Map of key-value pairs
+   */
+  async loadTables() {
+    if (!this.db) await this.init();
+
+    const transaction = this.db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+
+      request.onsuccess = (event) => {
+        const results = event.target.result;
+        const externalTables = new Map();
+
+        for (const record of results) {
+          // Convert plain object back to Map
+          const tableData = new Map(Object.entries(record.data));
+          externalTables.set(record.id, tableData);
+        }
+
+        console.log(`Loaded ${externalTables.size} tables from IndexedDB`);
+        resolve(externalTables);
+      };
+
+      request.onerror = reject;
+    });
+  }
+
+  /**
+   * Clear all persisted data
+   */
+  async clearAll() {
+    if (!this.db) await this.init();
+
+    const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    return new Promise((resolve, reject) => {
+      const request = store.clear();
+      request.onsuccess = resolve;
+      request.onerror = reject;
+    });
+  }
+}
+
+export default new LuaPersistence();

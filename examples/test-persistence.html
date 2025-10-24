@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>External Table Persistence Test</title>
+  <style>
+    body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #e0e0e0; }
+    button { margin: 5px; padding: 10px; background: #4ec9b0; border: none; color: #000; cursor: pointer; }
+    pre { background: #252526; padding: 10px; border-radius: 5px; }
+    .step { margin: 20px 0; padding: 10px; border: 1px solid #4ec9b0; }
+    .success { color: #6fc96f; }
+    .error { color: #f97777; }
+  </style>
+</head>
+<body>
+  <h1>External Table Persistence Test</h1>
+  <p>This test verifies that external tables persist across multiple code executions.</p>
+  
+  <button onclick="step1()">Step 1: Create Table</button>
+  <button onclick="step2()">Step 2: Read Table</button>
+  <button onclick="step3()">Step 3: Add More Data</button>
+  <button onclick="step4()">Step 4: List All Data</button>
+  <button onclick="clearAll()">Clear Results</button>
+  
+  <div id="results"></div>
+  
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    let initialized = false;
+    
+    async function init() {
+      if (!initialized) {
+        await lua.loadLuaWasm();
+        lua.init();
+        initialized = true;
+      }
+    }
+    
+    function addResult(title, code, result) {
+      const results = document.getElementById('results');
+      const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+      
+      results.innerHTML += `<div class="step">
+        <h3>${title}</h3>
+        <pre>${code}</pre>
+        ${output ? `<p>Output:<pre>${output}</pre></p>` : ''}
+        ${returnValue ? `<p class="success">Return: ${JSON.stringify(returnValue)}</p>` : ''}
+      </div>`;
+    }
+    
+    window.step1 = async () => {
+      await init();
+      const code = `
+-- Create a global external table
+myTable = ext.table()
+myTable.name = "Persistent Table"
+myTable.created = os.date()
+myTable[1] = "First item"
+myTable[2] = "Second item"
+myTable.count = 2
+
+print("Created table with name: " .. myTable.name)
+return "Table created successfully"
+      `;
+      
+      const result = lua.compute(code);
+      addResult("Step 1: Create External Table", code, result);
+    };
+    
+    window.step2 = async () => {
+      await init();
+      const code = `
+-- Try to access the previously created table
+if myTable then
+  print("Table exists!")
+  print("Name: " .. tostring(myTable.name))
+  print("Created: " .. tostring(myTable.created))
+  print("Item 1: " .. tostring(myTable[1]))
+  print("Item 2: " .. tostring(myTable[2]))
+  return "Successfully read " .. myTable.count .. " items"
+else
+  return "Table does not exist!"
+end
+      `;
+      
+      const result = lua.compute(code);
+      addResult("Step 2: Read Existing Table", code, result);
+    };
+    
+    window.step3 = async () => {
+      await init();
+      const code = `
+-- Add more data to the existing table
+if myTable then
+  myTable[3] = "Third item"
+  myTable[4] = "Fourth item"
+  myTable.count = 4
+  myTable.lastModified = os.date()
+  
+  print("Added items 3 and 4")
+  print("Total count: " .. myTable.count)
+  return "Added more data"
+else
+  return "Table not found!"
+end
+      `;
+      
+      const result = lua.compute(code);
+      addResult("Step 3: Add More Data", code, result);
+    };
+    
+    window.step4 = async () => {
+      await init();
+      const code = `
+-- List all data in the table
+if myTable then
+  print("=== Table Contents ===")
+  print("Name: " .. tostring(myTable.name))
+  print("Created: " .. tostring(myTable.created))
+  print("Last Modified: " .. tostring(myTable.lastModified or "N/A"))
+  print("Count: " .. tostring(myTable.count))
+  print("\\nItems:")
+  for i = 1, 4 do
+    print("  [" .. i .. "] = " .. tostring(myTable[i]))
+  end
+  return "Listed all " .. myTable.count .. " items"
+else
+  return "Table not found!"
+end
+      `;
+      
+      const result = lua.compute(code);
+      addResult("Step 4: List All Data", code, result);
+    };
+    
+    window.clearAll = () => {
+      document.getElementById('results').innerHTML = '';
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.15.1
+    
+    - name: Cache Zig build
+      uses: actions/cache@v3
+      with:
+        path: |
+          .zig-cache
+          .build
+        key: ${{ runner.os }}-zig-${{ hashFiles('**/*.zig') }}
+        restore-keys: |
+          ${{ runner.os }}-zig-
+    
+    - name: Build WASM
+      run: |
+        chmod +x build.sh
+        ./build.sh
+    
+    - name: Verify WASM output
+      run: |
+        ls -la dist/
+        file dist/lua.wasm
+        wc -c dist/lua.wasm
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Test WASM module
+      run: |
+        cd demo
+        node -e "
+        const fs = require('fs');
+        const wasmBuffer = fs.readFileSync('../dist/lua.wasm');
+        console.log('WASM size:', wasmBuffer.length);
+        console.log('Valid WASM:', WebAssembly.validate(wasmBuffer));
+        "
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: lua-wasm
+        path: dist/lua.wasm
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - uses: actions/download-artifact@v3
+      with:
+        name: lua-wasm
+        path: dist/
+    
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/lua.wasm
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

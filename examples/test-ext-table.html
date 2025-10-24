@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>External Table Test</title>
+  <style>
+    body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #e0e0e0; }
+    pre { background: #252526; padding: 10px; border-radius: 5px; }
+    .test { margin: 20px 0; padding: 10px; border: 1px solid #4ec9b0; }
+    .success { color: #6fc96f; }
+    .error { color: #f97777; }
+  </style>
+</head>
+<body>
+  <h1>External Table Test</h1>
+  <button onclick="runTest()">Run Test</button>
+  <div id="results"></div>
+  
+  <script type="module">
+    import lua from './lua-api.js';
+    
+    window.runTest = async () => {
+      const results = document.getElementById('results');
+      results.innerHTML = '<h2>Running external table tests...</h2>';
+      
+      try {
+        // Initialize
+        await lua.loadLuaWasm();
+        lua.init();
+        
+        // Test 1: Create external table and set values
+        const test1 = `
+local t = ext.table()
+t[1] = "Hello"
+t[2] = "World"
+t["key"] = "value"
+return "Table created and populated"
+        `;
+        
+        const result1 = lua.compute(test1);
+        const { output: out1, result: res1 } = lua.readResult(lua.getBufferPtr(), result1);
+        
+        results.innerHTML += `<div class="test">
+          <h3>Test 1: Create and populate external table</h3>
+          <pre>${test1}</pre>
+          <p class="success">Result: ${JSON.stringify(res1)}</p>
+        </div>`;
+        
+        // Test 2: Read values back
+        const test2 = `
+local t = ext.table()
+t[1] = "Hello"
+t[2] = "World"
+t["key"] = "value"
+print("t[1] = " .. tostring(t[1]))
+print("t[2] = " .. tostring(t[2]))  
+print("t['key'] = " .. tostring(t["key"]))
+return "Values retrieved"
+        `;
+        
+        const result2 = lua.compute(test2);
+        const { output: out2, result: res2 } = lua.readResult(lua.getBufferPtr(), result2);
+        
+        results.innerHTML += `<div class="test">
+          <h3>Test 2: Read values from external table</h3>
+          <pre>${test2}</pre>
+          <p>Output:<pre>${out2}</pre></p>
+          <p class="success">Result: ${JSON.stringify(res2)}</p>
+        </div>`;
+        
+        // Test 3: Table operations
+        const test3 = `
+local t = ext.table()
+t.name = "Lua"
+t.version = 5.4
+t.awesome = true
+
+-- Test table-like operations
+local count = 0
+for k, v in pairs(t) do
+  print(k .. " = " .. tostring(v))
+  count = count + 1
+end
+
+return "Counted " .. count .. " items"
+        `;
+        
+        const result3 = lua.compute(test3);
+        const { output: out3, result: res3 } = lua.readResult(lua.getBufferPtr(), result3);
+        
+        results.innerHTML += `<div class="test">
+          <h3>Test 3: Table operations</h3>
+          <pre>${test3}</pre>
+          <p>Output:<pre>${out3}</pre></p>
+          <p class="success">Result: ${JSON.stringify(res3)}</p>
+        </div>`;
+        
+        // Test 4: Multiple tables
+        const test4 = `
+local t1 = ext.table()
+local t2 = ext.table()
+
+t1.name = "Table 1"
+t2.name = "Table 2"
+
+print("t1.name = " .. t1.name)
+print("t2.name = " .. t2.name)
+
+return "Two separate tables work"
+        `;
+        
+        const result4 = lua.compute(test4);
+        const { output: out4, result: res4 } = lua.readResult(lua.getBufferPtr(), result4);
+        
+        results.innerHTML += `<div class="test">
+          <h3>Test 4: Multiple independent tables</h3>
+          <pre>${test4}</pre>
+          <p>Output:<pre>${out4}</pre></p>
+          <p class="success">Result: ${JSON.stringify(res4)}</p>
+        </div>`;
+        
+        results.innerHTML += '<h2 class="success">✅ All tests completed!</h2>';
+        
+      } catch (error) {
+        results.innerHTML += `<div class="error">❌ Error: ${error.message}<pre>${error.stack}</pre></div>`;
+      }
+    };
+  </script>
+</body>
+</html>
