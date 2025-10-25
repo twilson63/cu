@@ -39,25 +39,31 @@
     <script src="https://unpkg.com/lua-wasm-external-storage@2.0.0/dist/lua-wasm.js"></script>
 </head>
 <body>
-    <script>
-        // Initialize enhanced Lua WASM
-        LuaWASM.init().then(async lua => {
-            // Basic evaluation
-            const result = lua.eval('return 2 + 2');
-            console.log('Result:', result); // 4
-            
-            // Persist functions across sessions
-            await lua.persistFunction('Memory', 'fibonacci', `
-                function(n)
-                    if n <= 1 then return n end
-                    return fibonacci(n - 1) + fibonacci(n - 2)
-                end
-            `);
-            
-            // Use persisted function after page reload
-            const fibResult = lua.eval('return Memory.fibonacci(10)');
-            console.log('Fibonacci(10):', fibResult); // 55
-        });
+    <script type="module">
+        import lua from './web/lua-api.js';
+        
+        // Initialize Lua WASM
+        await lua.loadLuaWasm();
+        lua.init();
+        
+        // Basic computation
+        const result = await lua.compute('return 2 + 2');
+        console.log('Result:', result); // 4
+        
+        // Define and persist functions in Memory table
+        await lua.compute(`
+            function Memory.fibonacci(n)
+                if n <= 1 then return n end
+                return Memory.fibonacci(n - 1) + Memory.fibonacci(n - 2)
+            end
+        `);
+        
+        // Save state (includes functions)
+        await lua.saveState();
+        
+        // After page reload, function still exists and works
+        const fibResult = await lua.compute('return Memory.fibonacci(10)');
+        console.log('Fibonacci(10):', fibResult); // 55
     </script>
 </body>
 </html>
@@ -70,22 +76,26 @@ npm install lua-wasm-external-storage
 ```
 
 ```javascript
-import { LuaWASM } from 'lua-wasm-external-storage';
+import lua from './web/lua-api.js';
 
-const lua = await LuaWASM.init();
+await lua.loadLuaWasm();
+lua.init();
 
 // Basic usage
-const result = lua.eval('return "Hello from enhanced Lua!"');
-console.log(result); // "Hello from enhanced Lua!"
+const result = await lua.compute('return "Hello from Lua!"');
+console.log(result); // "Hello from Lua!"
 
-// Advanced batch operations
-const operations = [
-    { type: 'set', table: 'users', key: 'user1', value: { name: 'Alice', age: 30 } },
-    { type: 'set', table: 'users', key: 'user2', value: { name: 'Bob', age: 25 } }
-];
+// Store data in Memory table (with automatic persistence)
+await lua.compute(`
+    Memory.users = Memory.users or {}
+    Memory.users.user1 = { name = 'Alice', age = 30 }
+    Memory.users.user2 = { name = 'Bob', age = 25 }
+`);
 
-const results = await lua.batchTableOperations(operations);
-console.log('Batch results:', results);
+// Data persists automatically - save to IndexedDB
+await lua.saveState();
+
+// After page refresh, data is automatically restored
 ```
 
 ## 📖 Advanced Usage Examples
@@ -93,171 +103,167 @@ console.log('Batch results:', results);
 ### Function Persistence
 
 ```javascript
-// Define and persist complex functions
-await lua.persistFunction('Memory', 'taxCalculator', `
-    function(income, deductions = 0) 
-        local taxable = income - deductions
+// Define functions in Memory table
+await lua.compute(`
+    function Memory.taxCalculator(income, deductions) 
+        local taxable = income - (deductions or 0)
         local brackets = {10000, 50000, 100000}
         local rates = {0.1, 0.2, 0.3, 0.4}
         -- Complex tax calculation logic
-        return calculateTax(taxable, brackets, rates)
+        return taxable * rates[1]  -- Simplified
     end
 `);
 
-// Function with closures and upvalues
-await lua.persistFunction('Memory', 'counterFactory', `
-    function(initialValue)
-        local count = initialValue or 0
-        return function()
-            count = count + 1
-            return count
-        end
+// Function with closures
+await lua.compute(`
+    local count = 0
+    function Memory.counterFactory()
+        count = count + 1
+        return count
     end
 `);
 
-// Use after page reload
-const result = lua.eval(`
-    local calc = Memory.taxCalculator
-    local counter = Memory.counterFactory(100)
+// Save functions to persist across page reloads
+await lua.saveState();
+
+// Use functions (they persist automatically after reload)
+const result = await lua.compute(`
     return {
-        tax = calc(75000, 5000),
-        count1 = counter(),
-        count2 = counter()
+        tax = Memory.taxCalculator(75000, 5000),
+        count1 = Memory.counterFactory(),
+        count2 = Memory.counterFactory()
     }
 `);
+console.log(result);
 ```
 
-### Batch Operations
+### Bulk Data Operations
 
 ```javascript
-// High-performance bulk operations
+// Store bulk data using Lua tables
 const users = Array.from({length: 1000}, (_, i) => ({
     id: i,
     name: `User ${i}`,
     email: `user${i}@example.com`,
-    score: Math.floor(Math.random() * 1000),
-    created: new Date().toISOString()
+    score: Math.floor(Math.random() * 1000)
 }));
 
-// Batch insert 1000 users
-const operations = users.map(user => ({
-    type: 'set',
-    table: 'appUsers',
-    key: `user_${user.id}`,
-    value: user
-}));
+// Insert users via Lua
+console.time('Insert 1000 users');
+await lua.compute(`
+    Memory.appUsers = Memory.appUsers or {}
+    -- Users will be populated via JavaScript calls
+`);
 
-console.time('Batch Insert');
-const results = await lua.batchTableOperations(operations);
-console.timeEnd('Batch Insert'); // ~50-100ms for 1000 operations
+// Build Lua code to insert all users
+let insertCode = 'Memory.appUsers = Memory.appUsers or {}\n';
+users.forEach(user => {
+    insertCode += `Memory.appUsers.user_${user.id} = {
+        id = ${user.id},
+        name = "${user.name}",
+        email = "${user.email}",
+        score = ${user.score}
+    }\n`;
+});
 
-// Batch update scores
-const updateOps = users.slice(0, 100).map(user => ({
-    type: 'set', 
-    table: 'appUsers',
-    key: `user_${user.id}`,
-    value: { ...user, score: user.score + 100 }
-}));
+await lua.compute(insertCode);
+console.timeEnd('Insert 1000 users');
 
-await lua.batchTableOperations(updateOps);
+// Save all data
+await lua.saveState();
 ```
 
-### Advanced Querying
+### Querying and Filtering
 
 ```javascript
-// Create index for efficient querying
-await lua.createIndex('Memory', 'appUsers.score', 'btree');
+// Query data using Lua directly
+const highScorers = await lua.compute(`
+    local results = {}
+    for key, user in pairs(Memory.appUsers) do
+        if user.score >= 800 then
+            table.insert(results, user)
+        end
+    end
+    table.sort(results, function(a, b) return a.score > b.score end)
+    return results
+`);
 
-// Complex queries with indexing
-const highScorers = await lua.queryTable('Memory', {
-    table: 'appUsers',
-    field: 'score',
-    operator: '>=',
-    value: 800,
-    limit: 10,
-    sort: 'desc'
-});
-
-console.log('Top 10 high scorers:', highScorers);
+console.log('Top scorers:', highScorers);
 
 // Range queries
-const midRangeUsers = await lua.queryTable('Memory', {
-    table: 'appUsers',
-    field: 'score',
-    operator: 'between',
-    value: [400, 600],
-    limit: 20
-});
+const midRangeUsers = await lua.compute(`
+    local results = {}
+    for key, user in pairs(Memory.appUsers) do
+        if user.score >= 400 and user.score <= 600 then
+            table.insert(results, user)
+        end
+    end
+    return results
+`);
 
-// String queries
-const recentUsers = await lua.queryTable('Memory', {
-    table: 'appUsers',
-    field: 'created',
-    operator: 'startsWith',
-    value: '2024-01',
-    limit: 50
-});
+// String matching
+const emailResults = await lua.compute(`
+    local results = {}
+    for key, user in pairs(Memory.appUsers) do
+        if string.match(user.email, "example") then
+            table.insert(results, user)
+        end
+    end
+    return results
+`);
 ```
 
 ### Data Analysis
 
 ```javascript
-// Store analytical functions
-await lua.persistFunction('Memory', 'analytics', `
-    {
-        average = function(values)
-            local sum = 0
-            for _, v in ipairs(values) do sum = sum + v end
-            return sum / #values
-        end,
-        
-        median = function(values)
-            table.sort(values)
-            local n = #values
-            if n % 2 == 0 then
-                return (values[n/2] + values[n/2 + 1]) / 2
-            else
-                return values[(n + 1) / 2]
-            end
-        end,
-        
-        correlation = function(x, y)
-            -- Statistical correlation calculation
-            local n = #x
-            local sum_x, sum_y, sum_xy, sum_x2, sum_y2 = 0, 0, 0, 0, 0
-            
-            for i = 1, n do
-                sum_x = sum_x + x[i]
-                sum_y = sum_y + y[i]
-                sum_xy = sum_xy + x[i] * y[i]
-                sum_x2 = sum_x2 + x[i]^2
-                sum_y2 = sum_y2 + y[i]^2
-            end
-            
-            local numerator = n * sum_xy - sum_x * sum_y
-            local denominator = math.sqrt((n * sum_x2 - sum_x^2) * (n * sum_y2 - sum_y^2))
-            
-            return denominator == 0 and 0 or numerator / denominator
+// Define analytical functions
+await lua.compute(`
+    function Memory.average(values)
+        local sum = 0
+        for _, v in ipairs(values) do sum = sum + v end
+        return sum / #values
+    end
+    
+    function Memory.median(values)
+        table.sort(values)
+        local n = #values
+        if n % 2 == 0 then
+            return (values[n/2] + values[n/2 + 1]) / 2
+        else
+            return values[(n + 1) / 2]
         end
-    }
+    end
+    
+    function Memory.stdev(values)
+        local avg = Memory.average(values)
+        local sum = 0
+        for _, v in ipairs(values) do
+            sum = sum + (v - avg)^2
+        end
+        return math.sqrt(sum / #values)
+    end
 `);
 
 // Use analytical functions
-const analysis = lua.eval(`
+const analysis = await lua.compute(`
     local scores = {}
     for i = 1, 100 do
         scores[i] = math.random(100, 1000)
     end
     
     return {
-        average = Memory.analytics.average(scores),
-        median = Memory.analytics.median(scores),
+        average = Memory.average(scores),
+        median = Memory.median(scores),
+        stdev = Memory.stdev(scores),
         min = math.min(unpack(scores)),
         max = math.max(unpack(scores))
     }
 `);
 
 console.log('Score analysis:', analysis);
+
+// Save analysis functions for reuse
+await lua.saveState();
 ```
 
 ## 📚 API Reference
@@ -276,78 +282,93 @@ Initialize the enhanced Lua WASM environment.
 
 **Returns:** Promise<EnhancedLuaInstance>
 
-#### `lua.eval(code)`
+#### `lua.compute(code)`
 Execute Lua code and return the result.
 
 **Parameters:**
 - `code`: String containing Lua code
 
-**Returns:** The last returned value from Lua
+**Returns:** Promise that resolves to the last returned value from Lua (as string/number/object)
 
-#### `lua.persistFunction(table, name, code, options?)`
-Persist a Lua function for cross-session availability.
+#### `lua.saveState(name?)`
+Save the Memory table and all external tables to browser storage (IndexedDB).
 
 **Parameters:**
-- `table`: Target table name (usually 'Memory')
-- `name`: Function name for storage
-- `code`: Lua function code as string
-- `options`: Optional settings
-  - `compress`: Enable compression (default: true)
-  - `validate`: Validate bytecode (default: true)
+- `name`: Optional snapshot name (default: 'default')
 
 **Returns:** Promise<boolean> - Success status
 
-#### `lua.batchTableOperations(operations)`
-Execute multiple table operations efficiently.
+#### `lua.loadState(name?)`
+Restore the Memory table and all external tables from browser storage.
 
 **Parameters:**
-- `operations`: Array of operation objects
-  - `type`: 'set', 'get', 'delete', 'query'
-  - `table`: Target table name
-  - `key`: Item key (for set/get/delete)
-  - `value`: Item value (for set operations)
-  - `query`: Query specification (for query operations)
+- `name`: Optional snapshot name (default: 'default')
 
-**Returns:** Promise<Array> - Operation results
+**Returns:** Promise<boolean> - Success status
 
-#### `lua.createIndex(table, field, type?)`
-Create an index for efficient querying.
+#### `lua.init()`
+Initialize the Lua VM after loading the WASM module.
+
+**Returns:** number - Status code (0 = success)
+
+#### `lua.getMemoryStats()`
+Get memory statistics from the Lua VM.
+
+**Returns:** Object with memory information
+- `total`: Total memory allocated
+- `used`: Memory currently in use
+- `free`: Available memory
+
+#### `lua.runGc()`
+Run garbage collection on the Lua VM.
+
+**Returns:** void
+
+#### `lua.readBuffer(ptr, len)`
+Read raw bytes from WASM memory.
 
 **Parameters:**
-- `table`: Table name
-- `field`: Field path to index (e.g., 'users.age')
-- `type`: Index type ('btree', 'hash') - default: 'btree'
+- `ptr`: Memory pointer
+- `len`: Number of bytes to read
 
-**Returns:** Promise<Index> - Created index object
+**Returns:** string - Decoded buffer contents
 
-#### `lua.queryTable(table, query)`
-Query table data with advanced filtering.
+#### `lua.getTableInfo()`
+Get information about external tables.
 
-**Parameters:**
-- `table`: Table name
-- `query`: Query specification
-  - `field`: Field to query
-  - `operator`: Comparison operator
-  - `value`: Value to compare against
-  - `limit`: Maximum results (default: 100)
-  - `sort`: Sort order ('asc', 'desc')
+**Returns:** Object with table information
+- `memoryTableId`: ID of Memory table
+- `tableCount`: Total number of tables
+- `tableIds`: Array of all table IDs
 
-**Returns:** Promise<Array> - Query results
+### Lua Table Access Patterns
 
-### Query Operators
+Since all data is stored in Lua tables accessed via the Memory table, you can query using standard Lua operations:
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `=` | Equals | `{ field: 'name', operator: '=', value: 'Alice' }` |
-| `!=` | Not equals | `{ field: 'status', operator: '!=', value: 'inactive' }` |
-| `<` | Less than | `{ field: 'age', operator: '<', value: 18 }` |
-| `<=` | Less than or equal | `{ field: 'score', operator: '<=', value: 100 }` |
-| `>` | Greater than | `{ field: 'price', operator: '>', value: 50 }` |
-| `>=` | Greater than or equal | `{ field: 'rating', operator: '>=', value: 4 }` |
-| `between` | Range query | `{ field: 'age', operator: 'between', value: [18, 65] }` |
-| `startsWith` | String prefix | `{ field: 'email', operator: 'startsWith', value: 'admin' }` |
-| `endsWith` | String suffix | `{ field: 'domain', operator: 'endsWith', value: '.com' }` |
-| `contains` | String contains | `{ field: 'title', operator: 'contains', value: 'JavaScript' }` |
+```javascript
+// Direct table access
+const user = await lua.compute('return Memory.users.user1');
+
+// Iteration over tables
+const userCount = await lua.compute(`
+    local count = 0
+    for key, user in pairs(Memory.users) do
+        count = count + 1
+    end
+    return count
+`);
+
+// Filtering and mapping
+const results = await lua.compute(`
+    local active = {}
+    for key, user in pairs(Memory.users) do
+        if user.status == "active" then
+            table.insert(active, user)
+        end
+    end
+    return active
+`);
+```
 
 ## 🏗️ Architecture
 
@@ -419,28 +440,37 @@ npm run benchmark
 ### Performance Benchmarks
 
 ```javascript
-// Function persistence performance
+// Function serialization performance
 console.time('Function Persistence');
-await lua.persistFunction('Memory', 'testFunc', 'function(x) return x * 2 end');
-console.timeEnd('Function Persistence'); // ~5-15ms
+await lua.compute(`
+    function Memory.testFunc(x) 
+        return x * 2 
+    end
+`);
+await lua.saveState();
+console.timeEnd('Function Persistence'); // ~2-10ms
 
-// Batch operations performance
-const batchOps = Array.from({length: 1000}, (_, i) => ({
-    type: 'set', table: 'bench', key: `key${i}`, value: `value${i}`
-}));
+// Bulk data storage
+console.time('Store 1000 items');
+let code = 'Memory.bench = {}\n';
+for (let i = 0; i < 1000; i++) {
+    code += `Memory.bench.key${i} = "value${i}"\n`;
+}
+await lua.compute(code);
+console.timeEnd('Store 1000 items'); // ~50-100ms
 
-console.time('Batch 1000 Operations');
-await lua.batchTableOperations(batchOps);
-console.timeEnd('Batch 1000 Operations'); // ~50-100ms
-
-// Query performance with indexing
-await lua.createIndex('Memory', 'bench.key', 'btree');
-
-console.time('Indexed Query');
-const results = await lua.queryTable('Memory', {
-    table: 'bench', field: 'key', operator: 'startsWith', value: 'key5', limit: 10
-});
-console.timeEnd('Indexed Query'); // ~2-5ms with index
+// Table iteration performance
+console.time('Query 1000 items');
+const results = await lua.compute(`
+    local results = {}
+    for key, value in pairs(Memory.bench) do
+        if string.match(key, "key5") then
+            table.insert(results, {key = key, value = value})
+        end
+    end
+    return results
+`);
+console.timeEnd('Query 1000 items'); // ~5-20ms
 ```
 
 ## 🔒 Security
@@ -456,21 +486,31 @@ console.timeEnd('Indexed Query'); // ~2-5ms with index
 ### Best Practices
 
 ```javascript
-// Validate function code before persistence
-const validation = await lua.validateFunction(userCode);
-if (!validation.isValid) {
-    throw new Error(`Invalid function: ${validation.error}`);
+// Always wrap code in try-catch for error handling
+try {
+    const result = await lua.compute(`
+        return Memory.getValue("key")
+    `);
+} catch (error) {
+    console.error('Lua execution error:', error);
 }
 
-// Use schema validation for data integrity
-await lua.setSchema('users', {
-    name: { type: 'string', required: true },
-    age: { type: 'number', min: 0, max: 150 },
-    email: { type: 'string', pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ }
-});
+// Save state regularly to persist data
+setInterval(async () => {
+    await lua.saveState();
+    console.log('State saved');
+}, 5000);
 
-// Enable audit logging for sensitive operations
-lua.enableAuditLog(['persistFunction', 'batchTableOperations']);
+// Use consistent naming for Memory table keys
+await lua.compute(`
+    Memory.config = Memory.config or {}
+    Memory.data = Memory.data or {}
+    Memory.cache = Memory.cache or {}
+`);
+
+// Monitor memory usage
+const stats = lua.getMemoryStats();
+console.log('Memory used:', stats.used, 'bytes');
 ```
 
 ## 🌐 Browser Compatibility
@@ -532,22 +572,22 @@ rm -rf .zig-cache .build web/lua.wasm && ./build.sh --enhanced
 ## 📊 Performance Characteristics
 
 ### Function Persistence
-- **Serialization Time**: 5-20ms (typical functions < 10KB)
-- **Deserialization Time**: 2-8ms
-- **Maximum Size**: 100KB bytecode per function
-- **Compression Ratio**: 2:1 to 5:1 for typical functions
+- **Serialization Time**: ~2ms per function
+- **Deserialization Time**: ~1ms per function
+- **Storage per Function**: ~200 bytes (typical simple function)
+- **Maximum Size**: 16KB per value (IO buffer limit)
 
-### Batch Operations
-- **Throughput**: 1,000+ operations/second
-- **Transaction Size**: Up to 10,000 operations per batch
-- **Memory Usage**: < 50MB for large batches
-- **Error Recovery**: Automatic rollback on failure
+### Data Operations
+- **Computation Speed**: <10ms for typical Lua operations
+- **Table Storage**: Direct Lua table access (no intermediate layer)
+- **Memory Persistence**: ~50ms for IndexedDB I/O
+- **Memory Usage**: Minimal overhead (~1MB for 1000+ items)
 
-### Query Performance
-- **Indexed Queries**: 2-10ms for 10K+ record tables
-- **Full Table Scans**: 50-200ms for 10K records
-- **Index Creation**: 100-500ms for 10K records
-- **Memory Overhead**: < 20% for index storage
+### Persistence Performance
+- **Save State**: ~50-100ms for IndexedDB storage
+- **Load State**: ~50-100ms from IndexedDB
+- **Compression**: 2:1 to 5:1 ratio for binary data
+- **Browser Storage**: Up to 50MB per origin (varies by browser)
 
 ## 🤝 Contributing
 
