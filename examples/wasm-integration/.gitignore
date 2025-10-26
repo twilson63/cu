@@ -1,0 +1,15 @@
+# Rust
+rust-example/target/
+rust-example/Cargo.lock
+
+# C
+c-example/*.o
+c-example/lua-wasm-demo
+
+# Go
+go-example/go-example
+go-example/go.sum
+
+# General
+*/lua.wasm
+*/.DS_Store

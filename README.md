@@ -615,6 +615,28 @@ function _home.myFunction() end
 
 The API remains otherwise unchanged, ensuring a smooth upgrade path.
 
+## 🔧 Low-Level WASM API
+
+For developers integrating lua.wasm into **non-JavaScript environments** (Rust, C, Go, custom WASM runtimes), we provide comprehensive low-level API documentation:
+
+**📘 [WASM Low-Level API Reference](docs/WASM_API_REFERENCE.md)**
+
+This guide documents:
+- All 11 WASM exports (init, compute, etc.)
+- All 5 required host function imports
+- Memory protocol and I/O buffer (64KB)
+- Complete integration examples in Rust, C, Go, and Node.js
+- Type mappings and calling conventions
+- Error handling and best practices
+
+**Working Integration Examples:**
+- [Rust + wasmtime](examples/wasm-integration/rust-example/)
+- [C + WAMR](examples/wasm-integration/c-example/)
+- [Go + wazero](examples/wasm-integration/go-example/)
+- [Node.js (bare WASM)](examples/wasm-integration/nodejs-example/)
+
+Perfect for building custom Lua runtimes or language bindings.
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.

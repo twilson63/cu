@@ -1,0 +1,12 @@
+[package]
+name = "lua-wasm-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmtime = "26.0.0"
+anyhow = "1.0"
+
+[[bin]]
+name = "lua-wasm-demo"
+path = "src/main.rs"

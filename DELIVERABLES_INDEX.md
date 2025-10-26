@@ -51,6 +51,7 @@ This document provides a complete index of all deliverables for the v2.0.0 relea
 
 ### User Documentation
 - **[README.md](README.md)** - Main project documentation
+- **[docs/WASM_API_REFERENCE.md](docs/WASM_API_REFERENCE.md)** ⭐ - Low-level WASM API for non-JS integration
   - Line 33: Naming note
   - Lines 56-68: Quick start with `_home`
   - Lines 90-95: npm installation example
@@ -79,6 +80,24 @@ This document provides a complete index of all deliverables for the v2.0.0 relea
   - New `getHomeTableId()` function
 
 ### Technical Documentation
+
+- **[docs/MEMORY_PROTOCOL.md](docs/MEMORY_PROTOCOL.md)** - ⭐ Complete memory protocol specification
+  - I/O buffer mechanism (64KB shared buffer)
+  - Data encoding specifications (type tags, byte order)
+  - Error protocol (negative return values)
+  - Memory ownership rules and safety guidelines
+  - Thread safety considerations
+  - Detailed implementation examples
+  - Performance characteristics
+  - ASCII diagrams and visual examples
+  
+- **[docs/MEMORY_PROTOCOL_QUICK_REFERENCE.md](docs/MEMORY_PROTOCOL_QUICK_REFERENCE.md)** - One-page quick reference
+  - Buffer basics and API functions
+  - Usage flow patterns
+  - Type encoding table
+  - Deserialization code examples
+  - Common issues and solutions
+  - Performance tips
 - **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
   - Phase-by-phase breakdown
   - Code changes analysis
@@ -110,6 +129,16 @@ This document provides a complete index of all deliverables for the v2.0.0 relea
   - `_home` concept explanation
   - Implementation details
 
+- **[docs/WASM_EXPORTS_REFERENCE.md](docs/WASM_EXPORTS_REFERENCE.md)** - Low-level WASM exports documentation
+  - All 11 exported functions with complete signatures
+  - Type mappings across languages
+  - Memory safety considerations
+
+- **[docs/HOST_FUNCTION_IMPORTS.md](docs/HOST_FUNCTION_IMPORTS.md)** - Host function requirements
+  - All 5 required imports specification
+  - Reference implementations
+  - Integration patterns
+
 ---
 
 ## 🎨 Examples & Demos
@@ -138,6 +167,40 @@ This document provides a complete index of all deliverables for the v2.0.0 relea
 - **[examples/*.lua](examples/)** - Lua code examples
   - All examples verified
   - Use `ext.table()` API (no changes needed)
+
+### WASM Integration Examples ⭐ NEW
+Complete working examples for integrating lua.wasm in non-JavaScript environments:
+
+- **[examples/wasm-integration/rust-example/](examples/wasm-integration/rust-example/)** - Rust + wasmtime
+  - Cargo.toml with dependencies
+  - Complete src/main.rs implementation
+  - All 5 host functions implemented
+  - Build and run instructions
+
+- **[examples/wasm-integration/c-example/](examples/wasm-integration/c-example/)** - C + WAMR
+  - Makefile for building
+  - Complete main.c with native implementations
+  - Memory management examples
+  - Installation guide
+
+- **[examples/wasm-integration/go-example/](examples/wasm-integration/go-example/)** - Go + wazero
+  - go.mod with wazero dependency
+  - Complete main.go implementation
+  - Go host function bridges
+  - Integration guide
+
+- **[examples/wasm-integration/nodejs-example/](examples/wasm-integration/nodejs-example/)** - Node.js bare WASM
+  - Zero-dependency implementation
+  - Direct WebAssembly API usage
+  - Comparison with high-level API
+  - Simple usage guide
+
+All examples include:
+- Complete runnable code
+- External table storage implementation
+- Error handling patterns
+- Detailed inline comments
+- Expected output examples
 
 ---
 
