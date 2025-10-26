@@ -41,6 +41,7 @@ zig build-exe -target wasm32-freestanding -O ReleaseFast \
      --export=attach_memory_table \
      --export=get_memory_table_id \
      --export=sync_external_table_counter \
+     --export=set_memory_alias_enabled \
      src/main.zig \
      .build/libc-stubs.o \
      .build/lapi.o .build/lauxlib.o .build/lbaselib.o \

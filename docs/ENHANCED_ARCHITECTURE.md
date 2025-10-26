@@ -108,11 +108,16 @@ class EnhancedLuaAPI {
     async queryTable(table, query);
     
     // Utility functions
-    async getMemoryStats();
+    async getMemoryStats();  // Returns WASM memory statistics
     async validateFunction(code);
     async compressData(data);
+    
+    // Home table utilities
+    async getHomeTableId();  // Get the _home table ID
 }
 ```
+
+**Note on Naming:** The home table (accessible as `_G._home` in Lua) represents the primary persistent storage location - your "home base" for data. The old name `Memory` is still supported as an alias for backward compatibility.
 
 #### AdvancedStorageManager
 Orchestrates complex storage operations and provides transaction support:
@@ -357,7 +362,7 @@ class CompressionService {
 ### Query Execution Flow
 
 ```
-1. JavaScript: queryTable('Memory', query)
+1. JavaScript: queryTable('_home', query)
    │
    ├─ Parse query specification
    ├─ Check for available indices

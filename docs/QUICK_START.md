@@ -610,6 +610,26 @@ end
 
 ---
 
+## Understanding `_home` - Your Persistent Home Table
+
+The `_home` table is a special global table that persists across Lua executions. Think of it as your "home base" where you can safely store data that needs to stick around.
+
+**Example:**
+```lua
+-- Store data in your home
+_home.user_name = "Alice"
+_home.score = 100
+_home.level = 1
+
+-- Access it later (even in different eval calls)
+print("Welcome back, " .. _home.user_name)
+_home.score = _home.score + 10
+```
+
+**Backward Compatibility Note:** If you see references to `Memory` in older examples, that's the old name for `_home`. Both work, but `_home` is the recommended name as it better describes the concept of a persistent storage location.
+
+---
+
 ## What's Next?
 
 - Read [README_LUA.md](README_LUA.md) for complete API reference

@@ -133,7 +133,7 @@
 local creation_time = os.time()
 local unique_id = math.random(1000, 9999)
 
-function Memory.myUniqueFunction(name)
+function _home.myUniqueFunction(name)
   return string.format(
     "Hello %s! I was created at %d with ID #%d", 
     name, creation_time, unique_id
@@ -142,14 +142,14 @@ end
 
 -- Also create a counter function with state
 local call_count = 0
-function Memory.counter()
+function _home.counter()
   call_count = call_count + 1
   return "Called " .. call_count .. " times"
 end
 
 -- Store the metadata
-Memory.function_id = unique_id
-Memory.creation_time = creation_time
+_home.function_id = unique_id
+_home.creation_time = creation_time
 
 return "Created function with ID #" .. unique_id</textarea>
       
@@ -254,15 +254,15 @@ return "Created function with ID #" .. unique_id</textarea>
         const code = `
 print("Testing function:")
 print("================")
-print(Memory.myUniqueFunction("Alice"))
-print(Memory.myUniqueFunction("Bob"))
+print(_home.myUniqueFunction("Alice"))
+print(_home.myUniqueFunction("Bob"))
 print("")
 print("Counter test:")
-print(Memory.counter())
-print(Memory.counter())
+print(_home.counter())
+print(_home.counter())
 print("")
-print("Function ID: " .. tostring(Memory.function_id))
-print("Creation time: " .. tostring(Memory.creation_time))
+print("Function ID: " .. tostring(_home.function_id))
+print("Creation time: " .. tostring(_home.creation_time))
 return "✅ Function works!"`;
         
         const result = await lua.compute(code);
@@ -333,25 +333,25 @@ return "✅ Function works!"`;
 print("Checking if function exists after VM reset:")
 print("==========================================")
 
-if Memory.myUniqueFunction then
+if _home.myUniqueFunction then
   print("❌ UNEXPECTED: Function still exists!")
-  print("Type: " .. type(Memory.myUniqueFunction))
+  print("Type: " .. type(_home.myUniqueFunction))
 else
   print("✅ Function is GONE (as expected)")
-  print("   Memory.myUniqueFunction = " .. tostring(Memory.myUniqueFunction))
+  print("   _home.myUniqueFunction = " .. tostring(_home.myUniqueFunction))
 end
 
-if Memory.function_id then
+if _home.function_id then
   print("❌ UNEXPECTED: Metadata still exists!")
 else
   print("✅ Metadata is GONE (as expected)")
-  print("   Memory.function_id = " .. tostring(Memory.function_id))
+  print("   _home.function_id = " .. tostring(_home.function_id))
 end
 
 -- Try to call it (should fail)
 local success, err = pcall(function()
-  if Memory.myUniqueFunction then
-    return Memory.myUniqueFunction("Test")
+  if _home.myUniqueFunction then
+    return _home.myUniqueFunction("Test")
   else
     error("Function does not exist")
   end
@@ -394,15 +394,15 @@ print("")
 print("Checking restored function:")
 print("==========================")
 
-if Memory.myUniqueFunction then
+if _home.myUniqueFunction then
   print("✅ Function IS BACK!")
-  print("   Type: " .. type(Memory.myUniqueFunction))
-  print("   Function ID: " .. tostring(Memory.function_id))
+  print("   Type: " .. type(_home.myUniqueFunction))
+  print("   Function ID: " .. tostring(_home.function_id))
 else
   print("❌ Function was not restored")
 end
 
-return Memory.function_id or 0`;
+return _home.function_id or 0`;
           
           const result = await lua.compute(code);
           const output = lua.readBuffer(lua.getBufferPtr(), Math.abs(result));
@@ -441,7 +441,7 @@ print("Testing RESTORED function:")
 print("=========================")
 
 -- Call the restored function
-local result1 = Memory.myUniqueFunction("Charlie")
+local result1 = _home.myUniqueFunction("Charlie")
 print(result1)
 
 -- The timestamp and ID in the function should be the SAME as before
@@ -456,8 +456,8 @@ print("5. Still contains the original timestamp/ID!")
 -- Test counter (state will be reset though)
 print("")
 print("Counter test (state resets):")
-print(Memory.counter())
-print(Memory.counter())
+print(_home.counter())
+print(_home.counter())
 
 return "✅ Restored function works perfectly!"`;
         

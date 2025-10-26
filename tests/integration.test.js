@@ -1,20 +1,21 @@
-import { test, expect, beforeAll, afterEach } from '@jest/globals';
+import { test, expect } from '@playwright/test';
 import LuaPersistent from '../web/lua-persistent.js';
 
-let lua;
+test.describe('Lua WASM - Basic Evaluation', () => {
+    let lua;
 
-beforeAll(async () => {
-    lua = new LuaPersistent();
-    await lua.load('web/lua.wasm');
-    const result = lua.init();
-    expect(result).toBe(0);
-});
+    test.beforeEach(async () => {
+        lua = new LuaPersistent();
+        await lua.load('web/lua.wasm');
+        const result = lua.init();
+        expect(result).toBe(0);
+    });
 
-afterEach(() => {
-    lua.resetState();
-});
-
-describe('Lua WASM - Basic Evaluation', () => {
+    test.afterEach(() => {
+        if (lua && lua.resetState) {
+            lua.resetState();
+        }
+    });
     test('eval returns 42 for simple return statement', () => {
         const result = lua.eval('return 42');
         expect(result).not.toBeNull();
@@ -152,7 +153,7 @@ describe('Lua WASM - Basic Evaluation', () => {
     });
 });
 
-describe('Lua WASM - External Tables', () => {
+test.describe('Lua WASM - External Tables', () => {
     test('ext.table() creates a table', () => {
         const result = lua.eval(`
             local t = ext.table()
@@ -290,7 +291,7 @@ describe('Lua WASM - External Tables', () => {
     });
 });
 
-describe('Lua WASM - Error Handling', () => {
+test.describe('Lua WASM - Error Handling', () => {
     test('syntax error is reported', () => {
         const result = lua.eval('return 42 +++');
         expect(result).toBeNull();
@@ -352,7 +353,7 @@ describe('Lua WASM - Error Handling', () => {
     });
 });
 
-describe('Lua WASM - Output Capture', () => {
+test.describe('Lua WASM - Output Capture', () => {
     test('single print is captured', () => {
         const result = lua.eval('print("test"); return 42');
         expect(result).not.toBeNull();
@@ -432,7 +433,7 @@ describe('Lua WASM - Output Capture', () => {
     });
 });
 
-describe('Lua WASM - Memory Management', () => {
+test.describe('Lua WASM - Memory Management', () => {
     test('memory stats are available', () => {
         const stats = lua.getMemoryStats();
         expect(stats).not.toBeNull();
@@ -476,7 +477,7 @@ describe('Lua WASM - Memory Management', () => {
     });
 });
 
-describe('Lua WASM - Serialization', () => {
+test.describe('Lua WASM - Serialization', () => {
     test('all types round-trip correctly through external table', () => {
         const result = lua.eval(`
             local t = ext.table()
@@ -534,7 +535,7 @@ describe('Lua WASM - Serialization', () => {
     });
 });
 
-describe('Lua WASM - Complex Scenarios', () => {
+test.describe('Lua WASM - Complex Scenarios', () => {
     test('counter example with persistence', () => {
         lua.eval(`
             counter = ext.table()

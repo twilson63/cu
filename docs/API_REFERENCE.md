@@ -23,7 +23,7 @@ await lua.loadLuaWasm({ autoRestore: true });
 ```
 
 ##### `init()`
-Initializes the Lua VM and guarantees `_G.Memory` points to the active external table (reattached automatically when persisted state exists). Must be called after `loadLuaWasm()`.
+Initializes the Lua VM and guarantees `_G._home` points to the active external table (reattached automatically when persisted state exists). Must be called after `loadLuaWasm()`.
 
 **Returns:** `number` - 0 on success, -1 on failure
 
@@ -34,6 +34,8 @@ if (result === 0) {
     console.log('Lua VM initialized successfully');
 }
 ```
+
+**Note:** For backward compatibility, `_G.Memory` is provided as an alias to `_G._home` but using `_home` is recommended for new code.
 
 ##### `compute(code)`
 Executes Lua code and returns the serialized result.
@@ -60,30 +62,37 @@ Deserializes the result from the buffer.
 **Returns:** `{ output: string, result: any }` - Deserialized result
 
 ##### `saveState()`
-Serializes all external tables and metadata (including `memoryTableId` and `nextTableId`) to IndexedDB.
+Serializes all external tables and metadata (including `homeTableId` and `nextTableId`) to IndexedDB.
 
 **Returns:** `Promise<boolean>` - Success status
 
 ##### `loadState()`
-Reloads external tables and metadata from IndexedDB, reattaching `_G.Memory` and resynchronizing Zig table counters.
+Reloads external tables and metadata from IndexedDB, reattaching `_G._home` (and its alias `_G.Memory` for backward compatibility) and resynchronizing Zig table counters.
 
 **Returns:** `Promise<boolean>` - Success status
 
 ##### `getTableInfo()`
 Returns information about current external tables.
 
-**Returns:** `{ tableCount: number, memoryTableId: number|null, nextTableId: number, tables: Array }`
+**Returns:** `{ tableCount: number, homeTableId: number|null, nextTableId: number, tables: Array }`
 
 ##### `getMemoryTableId()`
-Returns the numeric identifier backing `_G.Memory` for debugging and tooling.
+**Deprecated:** Use `getHomeTableId()` instead. Returns the numeric identifier backing the home table for debugging and tooling.
 
 **Returns:** `number|null` - Persisted table ID or `null` if uninitialized
+
+##### `getHomeTableId()`
+Returns the numeric identifier backing `_G._home` (the persistent home table) for debugging and tooling.
+
+**Returns:** `number|null` - Home table ID or `null` if uninitialized
 
 ## Lua API
 
 ### Module: ext
 
-External table functionality accessible from Lua. The runtime now exposes a persistent global `_G.Memory` pointing to an external table that survives save/load cycles.
+External table functionality accessible from Lua. The runtime exposes a persistent global `_G._home` pointing to an external table that survives save/load cycles. This serves as a "home base" for storing persistent data.
+
+**Backward Compatibility:** `_G.Memory` is provided as an alias to `_G._home` for existing code, but using `_home` is recommended for new code as it better represents the concept of a persistent home for your data.
 
 #### Functions
 

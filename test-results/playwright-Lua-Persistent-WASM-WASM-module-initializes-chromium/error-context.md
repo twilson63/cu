@@ -1,0 +1,53 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - heading "🌙 Lua Persistent (WASM)" [level=1] [ref=e3]
+  - paragraph [ref=e4]: "Phase 6: Export Function Fix - Full WASM Integration"
+  - generic [ref=e5]: "✅ Lua ready — _home table #1 attached"
+  - generic [ref=e6]:
+    - heading "📝 Lua Code Editor" [level=2] [ref=e7]
+    - 'textbox "Enter Lua code here... Examples: _home.counter = (_home.counter or 0) + 1 return _home.counter _home.user = ''alice'' return _home.user return string.upper(''hello'') -- Or try a more complex example: local sum = 0 for i = 1, 100 do sum = sum + i end return sum" [ref=e8]':
+      - /placeholder: "Enter Lua code here...\n\nExamples:\n  _home.counter = (_home.counter or 0) + 1\n  return _home.counter\n  _home.user = 'alice'\n  return _home.user\n  return string.upper('hello')\n  \n  -- Or try a more complex example:\n  local sum = 0\n  for i = 1, 100 do\n    sum = sum + i\n  end\n  return sum"
+      - text: _home.counter = (_home.counter or 0) + 1 return _home.counter
+    - generic [ref=e9]:
+      - button "▶️ Execute" [ref=e10] [cursor=pointer]
+      - button "📝 Clear Code" [ref=e11] [cursor=pointer]
+      - button "♻️ Run GC" [ref=e12] [cursor=pointer]
+      - button "💾 Save State" [ref=e13] [cursor=pointer]
+      - button "📂 Load State" [ref=e14] [cursor=pointer]
+      - button "🗂️ _home Example" [ref=e15] [cursor=pointer]
+      - button "📐 Math Example" [ref=e16] [cursor=pointer]
+      - button "📜 String Example" [ref=e17] [cursor=pointer]
+  - generic [ref=e18]:
+    - heading "📊 Output" [level=2] [ref=e19]
+    - generic [ref=e20]: Ready for input...
+  - generic [ref=e21]:
+    - heading "ℹ️ WASM Memory Statistics" [level=2] [ref=e22]
+    - generic [ref=e23]:
+      - generic [ref=e24]:
+        - generic [ref=e25]: Total Memory
+        - generic [ref=e26]: 1.75 MB
+      - generic [ref=e27]:
+        - generic [ref=e28]: Used
+        - generic [ref=e29]: 1075 KB
+      - generic [ref=e30]:
+        - generic [ref=e31]: Free
+        - generic [ref=e32]: 717 KB
+  - generic [ref=e33]:
+    - heading "📚 API Reference" [level=2] [ref=e34]
+    - generic [ref=e35]:
+      - strong [ref=e36]: "Available Functions:"
+      - code [ref=e37]: lua.init()
+      - text: "- Initialize Lua VM"
+      - code [ref=e38]: lua.compute(code)
+      - text: "- Execute Lua code"
+      - code [ref=e39]: lua.getBufferPtr()
+      - text: "- Get buffer address"
+      - code [ref=e40]: lua.getBufferSize()
+      - text: "- Get buffer size (64KB)"
+      - code [ref=e41]: lua.getMemoryStats()
+      - text: "- Get memory info"
+      - code [ref=e42]: lua.runGc()
+      - text: "- Run garbage collection"
+```

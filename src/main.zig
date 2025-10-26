@@ -9,11 +9,16 @@ const result_encoder = @import("result.zig");
 const IO_BUFFER_SIZE = 64 * 1024;
 const TOTAL_MEMORY = 2 * 1024 * 1024;
 
+// Storage namespace constants
+const HOME_TABLE_NAME = "_home";
+const LEGACY_MEMORY_NAME = "Memory";
+
 var io_buffer: [IO_BUFFER_SIZE]u8 align(16) = undefined;
 var heap: [TOTAL_MEMORY]u8 align(4096) = undefined;
 var global_lua_state: ?*lua.lua_State = null;
 var lua_memory_used: usize = 0;
 var memory_table_id: u32 = 0;
+var enable_memory_alias: bool = true; // Feature flag for backward compatibility
 
 extern fn js_ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int;
 extern fn js_ext_table_get(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]u8, max_len: usize) c_int;
@@ -72,7 +77,15 @@ fn setup_print_override(L: *lua.lua_State) void {
 
 fn setup_memory_global(L: *lua.lua_State) void {
     memory_table_id = ext_table.create_table(L);
-    lua.setglobal(L, "Memory");
+    // Set primary _home global
+    lua.pushvalue(L, -1); // Duplicate table reference
+    lua.setglobal(L, HOME_TABLE_NAME);
+    // Set legacy Memory alias for backward compatibility
+    if (enable_memory_alias) {
+        lua.setglobal(L, LEGACY_MEMORY_NAME);
+    } else {
+        lua.pop(L, 1); // Clean up duplicate if alias disabled
+    }
 }
 
 pub fn ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int {
@@ -158,7 +171,15 @@ export fn attach_memory_table(table_id: u32) void {
 
     const L = global_lua_state.?;
     ext_table.attach_table(L, table_id);
-    lua.setglobal(L, "Memory");
+    // Set primary _home global
+    lua.pushvalue(L, -1); // Duplicate table reference
+    lua.setglobal(L, HOME_TABLE_NAME);
+    // Set legacy Memory alias for backward compatibility
+    if (enable_memory_alias) {
+        lua.setglobal(L, LEGACY_MEMORY_NAME);
+    } else {
+        lua.pop(L, 1); // Clean up duplicate if alias disabled
+    }
     memory_table_id = table_id;
 }
 
@@ -168,6 +189,10 @@ export fn get_memory_table_id() u32 {
 
 export fn sync_external_table_counter(next_id: u32) void {
     ext_table.sync_counter(next_id);
+}
+
+export fn set_memory_alias_enabled(enabled: c_int) void {
+    enable_memory_alias = enabled != 0;
 }
 
 pub fn main() void {

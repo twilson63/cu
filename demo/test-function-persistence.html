@@ -70,7 +70,8 @@
 </head>
 <body>
   <h1>🧪 Lua Function Persistence Test</h1>
-  <p>This test demonstrates persisting Lua functions through the Memory table and browser storage.</p>
+  <p>This test demonstrates persisting Lua functions through the _home table and browser storage.</p>
+  <p><em>Note: Memory is supported as an alias to _home for backward compatibility.</em></p>
   
   <div id="status" class="info">Ready to start testing...</div>
 
@@ -80,8 +81,8 @@
     <div class="step">
       <div class="step-number">1</div>
       <div>
-        <button onclick="step1_createFunctions()">Create Functions in Memory</button>
-        <span> - Creates various Lua functions and stores them in Memory table</span>
+        <button onclick="step1_createFunctions()">Create Functions in _home</button>
+        <span> - Creates various Lua functions and stores them in _home table</span>
       </div>
     </div>
     <pre id="step1-output"></pre>
@@ -99,7 +100,7 @@
       <div class="step-number">3</div>
       <div>
         <button onclick="step3_saveState()">Save State to Browser Storage</button>
-        <span> - Persist the Memory table with functions to IndexedDB</span>
+        <span> - Persist the _home table with functions to IndexedDB</span>
       </div>
     </div>
     <pre id="step3-output"></pre>
@@ -117,7 +118,7 @@
       <div class="step-number">5</div>
       <div>
         <button onclick="step5_restoreState()">Restore State from Storage</button>
-        <span> - Load the persisted Memory table including functions</span>
+        <span> - Load the persisted _home table including functions</span>
       </div>
     </div>
     <pre id="step5-output"></pre>
@@ -168,57 +169,59 @@
 -- Create various types of functions to test persistence
 
 -- 1. Simple function
-function Memory.greet(name)
+function _home.greet(name)
   return "Hello, " .. (name or "World") .. "!"
 end
 
 -- 2. Function with closure (captures external variable)
 local counter = 0
-function Memory.increment()
+function _home.increment()
   counter = counter + 1
   return counter
 end
 
 -- 3. Function that returns a function
-function Memory.makeMultiplier(x)
+function _home.makeMultiplier(x)
   return function(y)
     return x * y
   end
 end
 
 -- 4. Recursive function
-function Memory.factorial(n)
+function _home.factorial(n)
   if n <= 1 then
     return 1
   else
-    return n * Memory.factorial(n - 1)
+    return n * _home.factorial(n - 1)
   end
 end
 
 -- 5. Function using upvalues
 do
   local secret = "hidden value"
-  function Memory.getSecret()
+  function _home.getSecret()
     return secret
   end
 end
 
 -- Also store some regular data
-Memory.testNumber = 42
-Memory.testString = "Persistence Test"
-Memory.testTable = {a = 1, b = 2, c = 3}
+_home.testNumber = 42
+_home.testString = "Persistence Test"
+_home.testTable = {a = 1, b = 2, c = 3}
 
 print("Created functions:")
-print("  - Memory.greet(name)")
-print("  - Memory.increment()")
-print("  - Memory.makeMultiplier(x)")
-print("  - Memory.factorial(n)")
-print("  - Memory.getSecret()")
+print("  - _home.greet(name)")
+print("  - _home.increment()")
+print("  - _home.makeMultiplier(x)")
+print("  - _home.factorial(n)")
+print("  - _home.getSecret()")
 print("")
 print("Created data:")
-print("  - Memory.testNumber = 42")
-print("  - Memory.testString = 'Persistence Test'")
-print("  - Memory.testTable = {a=1, b=2, c=3}")
+print("  - _home.testNumber = 42")
+print("  - _home.testString = 'Persistence Test'")
+print("  - _home.testTable = {a=1, b=2, c=3}")
+print("")
+print("Note: Memory is an alias to _home for backward compatibility")
 
 return "✅ Functions and data created successfully"`;
         
@@ -247,37 +250,43 @@ print("Testing functions before persistence:")
 print("-----------------------------------")
 
 -- Test greet function
-local greeting = Memory.greet("Alice")
-print("Memory.greet('Alice') = " .. greeting)
+local greeting = _home.greet("Alice")
+print("_home.greet('Alice') = " .. greeting)
 assert(greeting == "Hello, Alice!", "greet function failed")
 
 -- Test increment function (with closure)
-local count1 = Memory.increment()
-local count2 = Memory.increment()
-print("Memory.increment() = " .. count1)
-print("Memory.increment() = " .. count2)
+local count1 = _home.increment()
+local count2 = _home.increment()
+print("_home.increment() = " .. count1)
+print("_home.increment() = " .. count2)
 assert(count2 == count1 + 1, "increment function failed")
 
 -- Test makeMultiplier (higher-order function)
-local times3 = Memory.makeMultiplier(3)
+local times3 = _home.makeMultiplier(3)
 local result = times3(7)
-print("Memory.makeMultiplier(3)(7) = " .. result)
+print("_home.makeMultiplier(3)(7) = " .. result)
 assert(result == 21, "makeMultiplier function failed")
 
 -- Test factorial (recursive)
-local fact5 = Memory.factorial(5)
-print("Memory.factorial(5) = " .. fact5)
+local fact5 = _home.factorial(5)
+print("_home.factorial(5) = " .. fact5)
 assert(fact5 == 120, "factorial function failed")
 
 -- Test getSecret (upvalue)
-local secret = Memory.getSecret()
-print("Memory.getSecret() = " .. secret)
+local secret = _home.getSecret()
+print("_home.getSecret() = " .. secret)
 assert(secret == "hidden value", "getSecret function failed")
 
 -- Test regular data
-print("Memory.testNumber = " .. tostring(Memory.testNumber))
-print("Memory.testString = " .. tostring(Memory.testString))
-print("Memory.testTable.b = " .. tostring(Memory.testTable and Memory.testTable.b or "nil"))
+print("_home.testNumber = " .. tostring(_home.testNumber))
+print("_home.testString = " .. tostring(_home.testString))
+print("_home.testTable.b = " .. tostring(_home.testTable and _home.testTable.b or "nil"))
+
+print("")
+print("Testing backward compatibility (Memory alias):")
+print("Memory.greet('Bob') = " .. Memory.greet("Bob"))
+assert(Memory.testNumber == 42, "Memory alias failed")
+print("✓ Memory alias works correctly")
 
 return "✅ All function tests passed!"`;
         
@@ -303,7 +312,7 @@ return "✅ All function tests passed!"`;
       try {
         const saved = await lua.saveState();
         if (saved) {
-          appendOutput('step3-output', '✅ State saved to IndexedDB\n\nThe following has been persisted:\n- Memory table with all functions\n- Regular data values\n- External table mappings', 'success');
+          appendOutput('step3-output', '✅ State saved to IndexedDB\n\nThe following has been persisted:\n- _home table with all functions\n- Regular data values\n- External table mappings\n- Memory alias for backward compatibility', 'success');
           setStatus('✅ Step 3: State saved successfully', 'success');
         } else {
           appendOutput('step3-output', '❌ Failed to save state', 'error');
@@ -326,30 +335,35 @@ return "✅ All function tests passed!"`;
         
         // Verify Memory is empty
         const code = `
-print("Checking Memory table after reset:")
+print("Checking _home table after reset:")
 print("----------------------------------")
 
 local count = 0
-if Memory then
-  for k, v in pairs(Memory) do
+if _home then
+  for k, v in pairs(_home) do
     count = count + 1
-    print("  Found: Memory." .. tostring(k) .. " = " .. tostring(v))
+    print("  Found: _home." .. tostring(k) .. " = " .. tostring(v))
   end
 end
 
 if count == 0 then
-  print("  Memory table is empty ✓")
+  print("  _home table is empty ✓")
 end
 
 -- Try to call a function that should be gone
 local success, err = pcall(function()
-  return Memory.greet and Memory.greet("Test")
+  return _home.greet and _home.greet("Test")
 end)
 
-if not success or not Memory.greet then
+if not success or not _home.greet then
   print("  Functions are cleared ✓")
 else
   print("  WARNING: Functions still exist!")
+end
+
+-- Verify Memory alias is also cleared
+if Memory and not Memory.greet then
+  print("  Memory alias also cleared ✓")
 end
 
 return "✅ Memory cleared - VM reset"`;
@@ -379,13 +393,13 @@ return "✅ Memory cleared - VM reset"`;
         if (loaded) {
           // Check what was restored
           const code = `
-print("Checking restored Memory table:")
+print("Checking restored _home table:")
 print("-------------------------------")
 
 local items = {}
-if Memory then
-  for k, v in pairs(Memory) do
-    table.insert(items, string.format("  Memory.%s = %s (%s)", tostring(k), tostring(v), type(v)))
+if _home then
+  for k, v in pairs(_home) do
+    table.insert(items, string.format("  _home.%s = %s (%s)", tostring(k), tostring(v), type(v)))
   end
 end
 
@@ -396,11 +410,18 @@ end
 
 print("")
 print("Function types restored:")
-if Memory.greet then print("  ✓ Memory.greet: " .. type(Memory.greet)) end
-if Memory.increment then print("  ✓ Memory.increment: " .. type(Memory.increment)) end
-if Memory.makeMultiplier then print("  ✓ Memory.makeMultiplier: " .. type(Memory.makeMultiplier)) end
-if Memory.factorial then print("  ✓ Memory.factorial: " .. type(Memory.factorial)) end
-if Memory.getSecret then print("  ✓ Memory.getSecret: " .. type(Memory.getSecret)) end
+if _home.greet then print("  ✓ _home.greet: " .. type(_home.greet)) end
+if _home.increment then print("  ✓ _home.increment: " .. type(_home.increment)) end
+if _home.makeMultiplier then print("  ✓ _home.makeMultiplier: " .. type(_home.makeMultiplier)) end
+if _home.factorial then print("  ✓ _home.factorial: " .. type(_home.factorial)) end
+if _home.getSecret then print("  ✓ _home.getSecret: " .. type(_home.getSecret)) end
+
+print("")
+print("Verifying Memory alias:")
+if Memory and Memory.greet then
+  print("  ✓ Memory.greet accessible via alias")
+  print("  ✓ rawequal(Memory, _home) = " .. tostring(rawequal(Memory, _home)))
+end
 
 return "✅ State restored from IndexedDB"`;
           
@@ -437,12 +458,12 @@ local results = {}
 
 -- Test 1: greet function
 local success, result = pcall(function()
-  if Memory.greet and type(Memory.greet) == "function" then
-    local greeting = Memory.greet("Bob")
+  if _home.greet and type(_home.greet) == "function" then
+    local greeting = _home.greet("Bob")
     assert(greeting == "Hello, Bob!", "greet returned wrong value")
-    return "✓ Memory.greet('Bob') = " .. greeting
+    return "✓ _home.greet('Bob') = " .. greeting
   else
-    return "✗ Memory.greet is " .. type(Memory.greet or nil)
+    return "✗ _home.greet is " .. type(_home.greet or nil)
   end
 end)
 table.insert(results, result)
@@ -450,24 +471,24 @@ if not success then allPassed = false end
 
 -- Test 2: increment function (closure state might be lost)
 success, result = pcall(function()
-  if Memory.increment and type(Memory.increment) == "function" then
-    local count = Memory.increment()
-    return "✓ Memory.increment() = " .. count .. " (closure state may reset)"
+  if _home.increment and type(_home.increment) == "function" then
+    local count = _home.increment()
+    return "✓ _home.increment() = " .. count .. " (closure state may reset)"
   else
-    return "✗ Memory.increment is " .. type(Memory.increment or nil)
+    return "✗ _home.increment is " .. type(_home.increment or nil)
   end
 end)
 table.insert(results, result)
 
 -- Test 3: makeMultiplier function
 success, result = pcall(function()
-  if Memory.makeMultiplier and type(Memory.makeMultiplier) == "function" then
-    local times5 = Memory.makeMultiplier(5)
+  if _home.makeMultiplier and type(_home.makeMultiplier) == "function" then
+    local times5 = _home.makeMultiplier(5)
     local product = times5(8)
     assert(product == 40, "makeMultiplier returned wrong value")
-    return "✓ Memory.makeMultiplier(5)(8) = " .. product
+    return "✓ _home.makeMultiplier(5)(8) = " .. product
   else
-    return "✗ Memory.makeMultiplier is " .. type(Memory.makeMultiplier or nil)
+    return "✗ _home.makeMultiplier is " .. type(_home.makeMultiplier or nil)
   end
 end)
 table.insert(results, result)
@@ -475,12 +496,12 @@ if not success then allPassed = false end
 
 -- Test 4: factorial function
 success, result = pcall(function()
-  if Memory.factorial and type(Memory.factorial) == "function" then
-    local fact = Memory.factorial(6)
+  if _home.factorial and type(_home.factorial) == "function" then
+    local fact = _home.factorial(6)
     assert(fact == 720, "factorial returned wrong value")
-    return "✓ Memory.factorial(6) = " .. fact
+    return "✓ _home.factorial(6) = " .. fact
   else
-    return "✗ Memory.factorial is " .. type(Memory.factorial or nil)
+    return "✗ _home.factorial is " .. type(_home.factorial or nil)
   end
 end)
 table.insert(results, result)
@@ -488,18 +509,31 @@ if not success then allPassed = false end
 
 -- Test 5: getSecret function (upvalue might be lost)
 success, result = pcall(function()
-  if Memory.getSecret and type(Memory.getSecret) == "function" then
-    local secret = Memory.getSecret()
-    return "✓ Memory.getSecret() = " .. tostring(secret) .. " (upvalues may be lost)"
+  if _home.getSecret and type(_home.getSecret) == "function" then
+    local secret = _home.getSecret()
+    return "✓ _home.getSecret() = " .. tostring(secret) .. " (upvalues may be lost)"
   else
-    return "✗ Memory.getSecret is " .. type(Memory.getSecret or nil)
+    return "✗ _home.getSecret is " .. type(_home.getSecret or nil)
   end
 end)
 table.insert(results, result)
 
 -- Test 6: Regular data
-table.insert(results, "✓ Memory.testNumber = " .. tostring(Memory.testNumber))
-table.insert(results, "✓ Memory.testString = " .. tostring(Memory.testString))
+table.insert(results, "✓ _home.testNumber = " .. tostring(_home.testNumber))
+table.insert(results, "✓ _home.testString = " .. tostring(_home.testString))
+
+-- Test 7: Backward compatibility via Memory alias
+success, result = pcall(function()
+  if Memory and Memory.greet then
+    local greeting = Memory.greet("Charlie")
+    assert(greeting == "Hello, Charlie!", "Memory alias failed")
+    return "✓ Memory.greet('Charlie') = " .. greeting .. " (via alias)"
+  else
+    return "✗ Memory alias not working"
+  end
+end)
+table.insert(results, result)
+if not success then allPassed = false end
 
 for _, r in ipairs(results) do
   print(r)
@@ -540,8 +574,8 @@ end`;
         // Check what's in the Memory table
         const code = `
 local debug_info = {}
-if Memory then
-  for k, v in pairs(Memory) do
+if _home then
+  for k, v in pairs(_home) do
     local vtype = type(v)
     local vstr = tostring(v)
     if vtype == "function" then
@@ -555,12 +589,15 @@ if Memory then
   end
 end
 table.sort(debug_info)
-return table.concat(debug_info, "\n")`;
+local result = table.concat(debug_info, "\n")
+result = result .. "\n\nBackward Compatibility:\n"
+result = result .. "  Memory == _home: " .. tostring(rawequal(Memory, _home))
+return result`;
         
         const result = await lua.compute(code);
         if (result > 0) {
           const luaDebug = lua.readBuffer(lua.getBufferPtr(), result);
-          debugText += 'Memory Table Contents:\n' + luaDebug;
+          debugText += '_home Table Contents:\n' + luaDebug;
         }
         
         appendOutput('debug-output', debugText, 'info');

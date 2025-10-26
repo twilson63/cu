@@ -11,6 +11,10 @@
  * @author Enhanced Lua WASM Team
  */
 
+// Table name constants
+const HOME_TABLE_NAME = '_home';
+const LEGACY_MEMORY_NAME = 'Memory';
+
 class EnhancedLuaWASM {
     constructor() {
         this.wasmModule = null;
@@ -20,6 +24,8 @@ class EnhancedLuaWASM {
         this.indices = new Map();
         this.compression = new CompressionService();
         this.isInitialized = false;
+        this.homeTableId = null; // Renamed from memoryTableId
+        this.memoryAliasEnabled = false; // Controls backward compatibility with "Memory" name
         this.config = {
             maxBatchSize: 1000,
             maxBatchBytes: 64 * 1024, // 64KB
@@ -117,11 +123,11 @@ class EnhancedLuaWASM {
         this.functionRegistry.clear();
         this.indices.clear();
         
-        // Create default Memory table
-        const memoryTableId = await this.createExternalTable();
-        this.externalTables.set('Memory', memoryTableId);
+        // Create default _home table (replaces "Memory")
+        this.homeTableId = await this.createExternalTable();
+        this.externalTables.set(HOME_TABLE_NAME, this.homeTableId);
         
-        this.log('Memory systems initialized');
+        this.log(`Memory systems initialized with ${HOME_TABLE_NAME} table`);
     }
 
     /**
@@ -375,7 +381,33 @@ class EnhancedLuaWASM {
             cacheSize: this.cache.size,
             bufferSize: this.bufferSize,
             bufferUsage: this.getBufferUsage(),
+            homeTableId: this.homeTableId,
         };
+    }
+
+    /**
+     * Get the _home table ID
+     * @returns {number|null} The _home table ID (formerly "Memory" table)
+     */
+    getMemoryTableId() {
+        return this.homeTableId;
+    }
+
+    /**
+     * Enable or disable legacy "Memory" name alias
+     * @param {boolean} enabled - Whether to allow accessing _home via "Memory" name
+     */
+    setMemoryAliasEnabled(enabled) {
+        this.memoryAliasEnabled = enabled;
+        if (enabled) {
+            console.warn('[Deprecated] "Memory" table name alias enabled - consider migrating to "_home"');
+            // Add legacy alias mapping
+            this.externalTables.set(LEGACY_MEMORY_NAME, this.homeTableId);
+        } else {
+            // Remove legacy alias
+            this.externalTables.delete(LEGACY_MEMORY_NAME);
+        }
+        this.log(`Memory alias ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     /**
@@ -388,6 +420,8 @@ class EnhancedLuaWASM {
                 externalTables: Object.fromEntries(this.externalTables),
                 functionRegistry: Object.fromEntries(this.functionRegistry),
                 indices: Object.fromEntries(this.indices),
+                homeTableId: this.homeTableId,
+                memoryTableId: this.homeTableId, // Keep alias for backward compatibility
                 timestamp: Date.now(),
             };
             
@@ -422,6 +456,14 @@ class EnhancedLuaWASM {
                 // Restore indices
                 for (const [key, value] of Object.entries(state.indices || {})) {
                     this.indices.set(key, value);
+                }
+                
+                // Restore _home table ID - try new name first, fall back to legacy
+                if (state.homeTableId !== undefined && state.homeTableId !== null) {
+                    this.homeTableId = Number(state.homeTableId);
+                } else if (state.memoryTableId !== undefined && state.memoryTableId !== null) {
+                    this.homeTableId = Number(state.memoryTableId);
+                    console.warn('[Deprecated] Using legacy "memoryTableId" - please migrate to "homeTableId"');
                 }
                 
                 this.log('State loaded successfully');

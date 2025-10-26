@@ -203,12 +203,12 @@ function cloneTables(tables) {
   runtimeA.instance.exports.init();
   const memoryIdA = runtimeA.instance.exports.get_memory_table_id();
   if (!memoryIdA) {
-    throw new Error('Memory table ID was not created');
+    throw new Error('_home table ID was not created');
   }
 
-  const first = runLua(runtimeA, 'Memory.counter = (Memory.counter or 0) + 1; return Memory.counter');
+  const first = runLua(runtimeA, '_home.counter = (_home.counter or 0) + 1; return _home.counter');
   if (first.result !== 1) {
-    throw new Error(`Expected Memory.counter to be 1, got ${first.result}`);
+    throw new Error(`Expected _home.counter to be 1, got ${first.result}`);
   }
 
   const persistedTables = cloneTables(runtimeA.externalTables);
@@ -224,20 +224,33 @@ function cloneTables(tables) {
   runtimeB.instance.exports.attach_memory_table(memoryIdA);
   const memoryIdB = runtimeB.instance.exports.get_memory_table_id();
   if (memoryIdB !== memoryIdA) {
-    throw new Error(`Expected Memory ID ${memoryIdA}, got ${memoryIdB}`);
+    throw new Error(`Expected _home ID ${memoryIdA}, got ${memoryIdB}`);
   }
 
-  const restored = runLua(runtimeB, 'return Memory.counter');
+  const restored = runLua(runtimeB, 'return _home.counter');
   if (restored.result !== 1) {
-    throw new Error(`Expected Memory.counter to persist as 1, got ${restored.result}`);
+    throw new Error(`Expected _home.counter to persist as 1, got ${restored.result}`);
   }
 
-  const incremented = runLua(runtimeB, 'Memory.counter = Memory.counter + 1; return Memory.counter');
+  const incremented = runLua(runtimeB, '_home.counter = _home.counter + 1; return _home.counter');
   if (incremented.result !== 2) {
-    throw new Error(`Expected Memory.counter to increment to 2, got ${incremented.result}`);
+    throw new Error(`Expected _home.counter to increment to 2, got ${incremented.result}`);
   }
 
-  console.log('✅ Memory persistence smoke test passed');
+  // Test backward compatibility: Memory alias should work
+  const memoryAlias = runLua(runtimeB, 'return Memory.counter');
+  if (memoryAlias.result !== 2) {
+    throw new Error(`Expected Memory.counter (alias) to be 2, got ${memoryAlias.result}`);
+  }
+
+  // Test that both reference the same table
+  const aliasTest = runLua(runtimeB, 'Memory.test_value = 99; return _home.test_value');
+  if (aliasTest.result !== 99) {
+    throw new Error(`Expected Memory and _home to reference same table, but values differ`);
+  }
+
+  console.log('✅ _home persistence smoke test passed');
+  console.log('✅ Memory backward compatibility verified');
 })().catch((error) => {
   console.error('❌ Memory persistence smoke test failed');
   console.error(error);

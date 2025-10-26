@@ -147,10 +147,10 @@
       <textarea id="editor" placeholder="Enter Lua code here...
 
 Examples:
-  Memory.counter = (Memory.counter or 0) + 1
-  return Memory.counter
-  Memory.user = 'alice'
-  return Memory.user
+  _home.counter = (_home.counter or 0) + 1
+  return _home.counter
+  _home.user = 'alice'
+  return _home.user
   return string.upper('hello')
   
   -- Or try a more complex example:
@@ -158,15 +158,15 @@ Examples:
   for i = 1, 100 do
     sum = sum + i
   end
-  return sum">Memory.counter = (Memory.counter or 0) + 1
-return Memory.counter</textarea>
+  return sum">_home.counter = (_home.counter or 0) + 1
+return _home.counter</textarea>
       <div class="button-group">
         <button onclick="executeLua()">▶️ Execute</button>
         <button onclick="clearCode()">📝 Clear Code</button>
         <button onclick="runGarbageCollection()">♻️ Run GC</button>
         <button onclick="saveState()">💾 Save State</button>
         <button onclick="loadState()">📂 Load State</button>
-        <button onclick="runExample('memory')" style="background: #666;">🗂️ Memory Example</button>
+        <button onclick="runExample('memory')" style="background: #666;">🗂️ _home Example</button>
         <button onclick="runExample('math')" style="background: #666;">📐 Math Example</button>
         <button onclick="runExample('string')" style="background: #666;">📜 String Example</button>
       </div>
@@ -178,7 +178,7 @@ return Memory.counter</textarea>
     </div>
 
     <div class="section">
-      <h2>ℹ️ Memory Statistics</h2>
+      <h2>ℹ️ WASM Memory Statistics</h2>
       <div class="stat-grid">
         <div class="stat-item">
           <div class="stat-label">Total Memory</div>
@@ -325,7 +325,7 @@ return Memory.counter</textarea>
       try {
         const saved = await lua.saveState();
         if (saved) {
-          setStatus('💾 Memory state saved to browser storage', 'success');
+          setStatus('💾 _home state saved to browser storage', 'success');
         } else {
           setStatus('❌ Failed to save state', 'error');
         }
@@ -339,9 +339,9 @@ return Memory.counter</textarea>
         const loaded = await lua.loadState();
         if (loaded) {
           const info = lua.getTableInfo();
-          setStatus(`📂 Memory restored from browser storage (table #${info.memoryTableId || 'n/a'})`, 'success');
+          setStatus(`📂 _home restored from browser storage (table #${info.memoryTableId || 'n/a'})`, 'success');
           clearOutput();
-          appendOutput('State loaded. Your Memory table and external tables are restored.\nTry accessing previously created data via Memory.');
+          appendOutput('State loaded. Your _home table and external tables are restored.\nTry accessing previously created data via _home.');
         } else {
           setStatus('❌ Failed to load state', 'error');
         }
@@ -354,10 +354,10 @@ return Memory.counter</textarea>
         let code = '';
         switch(type) {
           case 'memory':
-            code = `-- Increment a persistent counter stored in Memory
-Memory.counter = (Memory.counter or 0) + 1
-print("Counter is now", Memory.counter)
-return Memory.counter`;
+            code = `-- Increment a persistent counter stored in _home
+_home.counter = (_home.counter or 0) + 1
+print("Counter is now", _home.counter)
+return _home.counter`;
             break;
           case 'math':
             code = `-- Calculate sum from 1 to 100
@@ -390,9 +390,9 @@ return Memory.counter`;
         lua.init();
         const info = lua.getTableInfo();
         if (info.memoryTableId) {
-          setStatus(`✅ Lua ready — Memory table #${info.memoryTableId} attached`, 'success');
+          setStatus(`✅ Lua ready — _home table #${info.memoryTableId} attached`, 'success');
         } else {
-          setStatus('✅ Lua WASM Ready - Memory table initialized', 'success');
+          setStatus('✅ Lua WASM Ready - _home table initialized', 'success');
         }
         updateStats();
       } catch (error) {

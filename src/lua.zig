@@ -48,6 +48,10 @@ pub inline fn settop(L: *lua_State, idx: c_int) void {
     c.lua_settop(L, idx);
 }
 
+pub inline fn pop(L: *lua_State, n: c_int) void {
+    c.lua_settop(L, -(n) - 1);
+}
+
 pub inline fn getglobal(L: *lua_State, name: [*:0]const u8) c_int {
     return c.lua_getglobal(L, name);
 }
@@ -78,6 +82,10 @@ pub inline fn pushboolean(L: *lua_State, b: c_int) void {
 
 pub inline fn pushnil(L: *lua_State) void {
     c.lua_pushnil(L);
+}
+
+pub inline fn pushvalue(L: *lua_State, idx: c_int) void {
+    c.lua_pushvalue(L, idx);
 }
 
 pub fn tointeger(L: *lua_State, idx: c_int) c.lua_Integer {

@@ -30,6 +30,8 @@
 
 ## 🚀 Quick Start
 
+> **Note on Naming**: As of v2.0.0, the persistent storage table is now called `_home` instead of `Memory`. This change provides better clarity and follows Lua naming conventions (prefixed with underscore to indicate it's a special/system table). See the [Migration Guide](docs/MIGRATION_TO_HOME.md) for upgrading from v1.x.
+
 ### CDN Usage (Fastest)
 
 ```html
@@ -50,11 +52,11 @@
         const result = await lua.compute('return 2 + 2');
         console.log('Result:', result); // 4
         
-        // Define and persist functions in Memory table
+        // Define and persist functions in _home table
         await lua.compute(`
-            function Memory.fibonacci(n)
+            function _home.fibonacci(n)
                 if n <= 1 then return n end
-                return Memory.fibonacci(n - 1) + Memory.fibonacci(n - 2)
+                return _home.fibonacci(n - 1) + _home.fibonacci(n - 2)
             end
         `);
         
@@ -62,7 +64,7 @@
         await lua.saveState();
         
         // After page reload, function still exists and works
-        const fibResult = await lua.compute('return Memory.fibonacci(10)');
+        const fibResult = await lua.compute('return _home.fibonacci(10)');
         console.log('Fibonacci(10):', fibResult); // 55
     </script>
 </body>
@@ -85,11 +87,11 @@ lua.init();
 const result = await lua.compute('return "Hello from Lua!"');
 console.log(result); // "Hello from Lua!"
 
-// Store data in Memory table (with automatic persistence)
+// Store data in _home table (with automatic persistence)
 await lua.compute(`
-    Memory.users = Memory.users or {}
-    Memory.users.user1 = { name = 'Alice', age = 30 }
-    Memory.users.user2 = { name = 'Bob', age = 25 }
+    _home.users = _home.users or {}
+    _home.users.user1 = { name = 'Alice', age = 30 }
+    _home.users.user2 = { name = 'Bob', age = 25 }
 `);
 
 // Data persists automatically - save to IndexedDB
@@ -103,9 +105,9 @@ await lua.saveState();
 ### Function Persistence
 
 ```javascript
-// Define functions in Memory table
+// Define functions in _home table
 await lua.compute(`
-    function Memory.taxCalculator(income, deductions) 
+    function _home.taxCalculator(income, deductions) 
         local taxable = income - (deductions or 0)
         local brackets = {10000, 50000, 100000}
         local rates = {0.1, 0.2, 0.3, 0.4}
@@ -117,7 +119,7 @@ await lua.compute(`
 // Function with closures
 await lua.compute(`
     local count = 0
-    function Memory.counterFactory()
+    function _home.counterFactory()
         count = count + 1
         return count
     end
@@ -129,9 +131,9 @@ await lua.saveState();
 // Use functions (they persist automatically after reload)
 const result = await lua.compute(`
     return {
-        tax = Memory.taxCalculator(75000, 5000),
-        count1 = Memory.counterFactory(),
-        count2 = Memory.counterFactory()
+        tax = _home.taxCalculator(75000, 5000),
+        count1 = _home.counterFactory(),
+        count2 = _home.counterFactory()
     }
 `);
 console.log(result);
@@ -151,14 +153,14 @@ const users = Array.from({length: 1000}, (_, i) => ({
 // Insert users via Lua
 console.time('Insert 1000 users');
 await lua.compute(`
-    Memory.appUsers = Memory.appUsers or {}
+    _home.appUsers = _home.appUsers or {}
     -- Users will be populated via JavaScript calls
 `);
 
 // Build Lua code to insert all users
-let insertCode = 'Memory.appUsers = Memory.appUsers or {}\n';
+let insertCode = '_home.appUsers = _home.appUsers or {}\n';
 users.forEach(user => {
-    insertCode += `Memory.appUsers.user_${user.id} = {
+    insertCode += `_home.appUsers.user_${user.id} = {
         id = ${user.id},
         name = "${user.name}",
         email = "${user.email}",
@@ -179,7 +181,7 @@ await lua.saveState();
 // Query data using Lua directly
 const highScorers = await lua.compute(`
     local results = {}
-    for key, user in pairs(Memory.appUsers) do
+    for key, user in pairs(_home.appUsers) do
         if user.score >= 800 then
             table.insert(results, user)
         end
@@ -193,7 +195,7 @@ console.log('Top scorers:', highScorers);
 // Range queries
 const midRangeUsers = await lua.compute(`
     local results = {}
-    for key, user in pairs(Memory.appUsers) do
+    for key, user in pairs(_home.appUsers) do
         if user.score >= 400 and user.score <= 600 then
             table.insert(results, user)
         end
@@ -204,7 +206,7 @@ const midRangeUsers = await lua.compute(`
 // String matching
 const emailResults = await lua.compute(`
     local results = {}
-    for key, user in pairs(Memory.appUsers) do
+    for key, user in pairs(_home.appUsers) do
         if string.match(user.email, "example") then
             table.insert(results, user)
         end
@@ -218,13 +220,13 @@ const emailResults = await lua.compute(`
 ```javascript
 // Define analytical functions
 await lua.compute(`
-    function Memory.average(values)
+    function _home.average(values)
         local sum = 0
         for _, v in ipairs(values) do sum = sum + v end
         return sum / #values
     end
     
-    function Memory.median(values)
+    function _home.median(values)
         table.sort(values)
         local n = #values
         if n % 2 == 0 then
@@ -234,8 +236,8 @@ await lua.compute(`
         end
     end
     
-    function Memory.stdev(values)
-        local avg = Memory.average(values)
+    function _home.stdev(values)
+        local avg = _home.average(values)
         local sum = 0
         for _, v in ipairs(values) do
             sum = sum + (v - avg)^2
@@ -252,9 +254,9 @@ const analysis = await lua.compute(`
     end
     
     return {
-        average = Memory.average(scores),
-        median = Memory.median(scores),
-        stdev = Memory.stdev(scores),
+        average = _home.average(scores),
+        median = _home.median(scores),
+        stdev = _home.stdev(scores),
         min = math.min(unpack(scores)),
         max = math.max(unpack(scores))
     }
@@ -291,7 +293,7 @@ Execute Lua code and return the result.
 **Returns:** Promise that resolves to the last returned value from Lua (as string/number/object)
 
 #### `lua.saveState(name?)`
-Save the Memory table and all external tables to browser storage (IndexedDB).
+Save the _home table and all external tables to browser storage (IndexedDB).
 
 **Parameters:**
 - `name`: Optional snapshot name (default: 'default')
@@ -299,7 +301,7 @@ Save the Memory table and all external tables to browser storage (IndexedDB).
 **Returns:** Promise<boolean> - Success status
 
 #### `lua.loadState(name?)`
-Restore the Memory table and all external tables from browser storage.
+Restore the _home table and all external tables from browser storage.
 
 **Parameters:**
 - `name`: Optional snapshot name (default: 'default')
@@ -337,22 +339,22 @@ Read raw bytes from WASM memory.
 Get information about external tables.
 
 **Returns:** Object with table information
-- `memoryTableId`: ID of Memory table
+- `memoryTableId`: ID of _home table
 - `tableCount`: Total number of tables
 - `tableIds`: Array of all table IDs
 
 ### Lua Table Access Patterns
 
-Since all data is stored in Lua tables accessed via the Memory table, you can query using standard Lua operations:
+Since all data is stored in Lua tables accessed via the _home table, you can query using standard Lua operations:
 
 ```javascript
 // Direct table access
-const user = await lua.compute('return Memory.users.user1');
+const user = await lua.compute('return _home.users.user1');
 
 // Iteration over tables
 const userCount = await lua.compute(`
     local count = 0
-    for key, user in pairs(Memory.users) do
+    for key, user in pairs(_home.users) do
         count = count + 1
     end
     return count
@@ -361,7 +363,7 @@ const userCount = await lua.compute(`
 // Filtering and mapping
 const results = await lua.compute(`
     local active = {}
-    for key, user in pairs(Memory.users) do
+    for key, user in pairs(_home.users) do
         if user.status == "active" then
             table.insert(active, user)
         end
@@ -443,7 +445,7 @@ npm run benchmark
 // Function serialization performance
 console.time('Function Persistence');
 await lua.compute(`
-    function Memory.testFunc(x) 
+    function _home.testFunc(x) 
         return x * 2 
     end
 `);
@@ -452,9 +454,9 @@ console.timeEnd('Function Persistence'); // ~2-10ms
 
 // Bulk data storage
 console.time('Store 1000 items');
-let code = 'Memory.bench = {}\n';
+let code = '_home.bench = {}\n';
 for (let i = 0; i < 1000; i++) {
-    code += `Memory.bench.key${i} = "value${i}"\n`;
+    code += `_home.bench.key${i} = "value${i}"\n`;
 }
 await lua.compute(code);
 console.timeEnd('Store 1000 items'); // ~50-100ms
@@ -463,7 +465,7 @@ console.timeEnd('Store 1000 items'); // ~50-100ms
 console.time('Query 1000 items');
 const results = await lua.compute(`
     local results = {}
-    for key, value in pairs(Memory.bench) do
+    for key, value in pairs(_home.bench) do
         if string.match(key, "key5") then
             table.insert(results, {key = key, value = value})
         end
@@ -489,7 +491,7 @@ console.timeEnd('Query 1000 items'); // ~5-20ms
 // Always wrap code in try-catch for error handling
 try {
     const result = await lua.compute(`
-        return Memory.getValue("key")
+        return _home.getValue("key")
     `);
 } catch (error) {
     console.error('Lua execution error:', error);
@@ -501,11 +503,11 @@ setInterval(async () => {
     console.log('State saved');
 }, 5000);
 
-// Use consistent naming for Memory table keys
+// Use consistent naming for _home table keys
 await lua.compute(`
-    Memory.config = Memory.config or {}
-    Memory.data = Memory.data or {}
-    Memory.cache = Memory.cache or {}
+    _home.config = _home.config or {}
+    _home.data = _home.data or {}
+    _home.cache = _home.cache or {}
 `);
 
 // Monitor memory usage
@@ -588,6 +590,30 @@ rm -rf .zig-cache .build web/lua.wasm && ./build.sh --enhanced
 - **Load State**: ~50-100ms from IndexedDB
 - **Compression**: 2:1 to 5:1 ratio for binary data
 - **Browser Storage**: Up to 50MB per origin (varies by browser)
+
+## 🔄 Migration from v1.x
+
+If you're upgrading from v1.x, the primary change is renaming the persistent storage table from `Memory` to `_home`:
+
+**Before (v1.x):**
+```lua
+Memory.data = { key = "value" }
+function Memory.myFunction() end
+```
+
+**After (v2.0.0):**
+```lua
+_home.data = { key = "value" }
+function _home.myFunction() end
+```
+
+**Migration steps:**
+1. Update all references from `Memory.` to `_home.` in your Lua code
+2. Update all references from `Memory[` to `_home[` if using bracket notation
+3. Test your application thoroughly
+4. See the [Migration Guide](docs/MIGRATION_TO_HOME.md) for detailed instructions and automated migration tools
+
+The API remains otherwise unchanged, ensuring a smooth upgrade path.
 
 ## 🤝 Contributing
 

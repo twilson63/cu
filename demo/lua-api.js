@@ -18,8 +18,15 @@ let wasmMemory = null;
 // External table storage
 const externalTables = new Map();
 let nextTableId = 1;
-let memoryTableId = null;
+let homeTableId = null; // Renamed from memoryTableId
 let stateRestored = false;
+
+// Table name constants
+const HOME_TABLE_NAME = '_home';
+const LEGACY_MEMORY_NAME = 'Memory';
+
+// Feature flags
+let memoryAliasEnabled = false; // Controls backward compatibility with "Memory" name
 
 function ensureExternalTable(tableId) {
   const id = Number(tableId);
@@ -48,7 +55,7 @@ async function restorePersistedTables() {
 
     externalTables.clear();
     nextTableId = 1;
-    memoryTableId = null;
+    homeTableId = null;
 
     for (const [id, entries] of tables) {
       const numericId = Number(id);
@@ -60,8 +67,12 @@ async function restorePersistedTables() {
     }
 
     if (metadata) {
-      if (metadata.memoryTableId !== undefined && metadata.memoryTableId !== null) {
-        memoryTableId = Number(metadata.memoryTableId);
+      // Try new homeTableId first, fall back to legacy memoryTableId
+      if (metadata.homeTableId !== undefined && metadata.homeTableId !== null) {
+        homeTableId = Number(metadata.homeTableId);
+      } else if (metadata.memoryTableId !== undefined && metadata.memoryTableId !== null) {
+        homeTableId = Number(metadata.memoryTableId);
+        console.warn('[Deprecated] Using legacy "memoryTableId" - please migrate to "homeTableId"');
       }
       if (metadata.nextTableId !== undefined && metadata.nextTableId !== null) {
         const hint = Number(metadata.nextTableId);
@@ -71,8 +82,8 @@ async function restorePersistedTables() {
       }
     }
 
-    if (memoryTableId && memoryTableId > 0) {
-      ensureExternalTable(memoryTableId);
+    if (homeTableId && homeTableId > 0) {
+      ensureExternalTable(homeTableId);
     }
 
     const maxId = getMaxTableId();
@@ -85,7 +96,7 @@ async function restorePersistedTables() {
   } catch (error) {
     console.warn('Failed to restore persisted tables:', error);
     stateRestored = false;
-    memoryTableId = null;
+    homeTableId = null;
     nextTableId = Math.max(1, nextTableId);
     return false;
   }
@@ -103,7 +114,7 @@ export async function loadLuaWasm(options = {}) {
     } else {
       externalTables.clear();
       nextTableId = 1;
-      memoryTableId = null;
+      homeTableId = null;
       stateRestored = false;
     }
 
@@ -121,9 +132,11 @@ export async function loadLuaWasm(options = {}) {
             const table = ensureExternalTable(table_id);
 
             const key = new TextDecoder().decode(wasmMemory.slice(key_ptr, key_ptr + key_len));
-            const value = new TextDecoder().decode(wasmMemory.slice(val_ptr, val_ptr + val_len));
+            // Store raw binary data to preserve function bytecode
+            const valueBytes = wasmMemory.slice(val_ptr, val_ptr + val_len);
+            const valueCopy = new Uint8Array(valueBytes);
 
-            table.set(key, value);
+            table.set(key, valueCopy);
             return 0;
           } catch (e) {
             console.error('js_ext_table_set error:', e);
@@ -140,7 +153,17 @@ export async function loadLuaWasm(options = {}) {
 
             if (value === undefined) return -1;
 
-            const valueBytes = new TextEncoder().encode(value);
+            // Handle binary data (Uint8Array) or legacy string data
+            let valueBytes;
+            if (value instanceof Uint8Array) {
+              valueBytes = value;
+            } else if (typeof value === 'string') {
+              // Legacy support for old string values
+              valueBytes = new TextEncoder().encode(value);
+            } else {
+              return -1;
+            }
+
             if (valueBytes.length > max_len) return -1;
 
             for (let i = 0; i < valueBytes.length; i++) {
@@ -216,25 +239,26 @@ export function init() {
   try {
     const result = wasmInstance.exports.init?.() ?? 0;
 
+    // Get the _home table ID from WASM
     const exportedId = wasmInstance.exports.get_memory_table_id?.() ?? 0;
-    if (memoryTableId && memoryTableId !== exportedId && wasmInstance.exports.attach_memory_table) {
-      wasmInstance.exports.attach_memory_table(memoryTableId);
-    } else if (!memoryTableId && exportedId > 0) {
-      memoryTableId = exportedId;
+    if (homeTableId && homeTableId !== exportedId && wasmInstance.exports.attach_memory_table) {
+      wasmInstance.exports.attach_memory_table(homeTableId);
+    } else if (!homeTableId && exportedId > 0) {
+      homeTableId = exportedId;
     }
 
     const confirmedId = wasmInstance.exports.get_memory_table_id?.() ?? exportedId;
     if (confirmedId > 0) {
-      memoryTableId = confirmedId;
-      ensureExternalTable(memoryTableId);
+      homeTableId = confirmedId;
+      ensureExternalTable(homeTableId);
     }
 
     const maxId = getMaxTableId();
     if (maxId >= nextTableId) {
       nextTableId = maxId + 1;
     }
-    if (memoryTableId && memoryTableId >= nextTableId) {
-      nextTableId = memoryTableId + 1;
+    if (homeTableId && homeTableId >= nextTableId) {
+      nextTableId = homeTableId + 1;
     }
 
     if (wasmInstance.exports.sync_external_table_counter) {
@@ -480,7 +504,8 @@ export function writeBuffer(ptr, data) {
 export async function saveState() {
   try {
     const metadata = {
-      memoryTableId,
+      homeTableId,
+      memoryTableId: homeTableId, // Keep alias for backward compatibility
       nextTableId,
       savedAt: new Date().toISOString(),
       stateRestored,
@@ -502,7 +527,7 @@ export async function loadState() {
 
     externalTables.clear();
     nextTableId = 1;
-    memoryTableId = null;
+    homeTableId = null;
 
     for (const [id, table] of tables) {
       const numericId = Number(id);
@@ -514,8 +539,12 @@ export async function loadState() {
     }
 
     if (metadata) {
-      if (metadata.memoryTableId !== undefined && metadata.memoryTableId !== null) {
-        memoryTableId = Number(metadata.memoryTableId);
+      // Try new homeTableId first, fall back to legacy memoryTableId
+      if (metadata.homeTableId !== undefined && metadata.homeTableId !== null) {
+        homeTableId = Number(metadata.homeTableId);
+      } else if (metadata.memoryTableId !== undefined && metadata.memoryTableId !== null) {
+        homeTableId = Number(metadata.memoryTableId);
+        console.warn('[Deprecated] Using legacy "memoryTableId" - please migrate to "homeTableId"');
       }
       if (metadata.nextTableId !== undefined && metadata.nextTableId !== null) {
         const hint = Number(metadata.nextTableId);
@@ -534,19 +563,19 @@ export async function loadState() {
       wasmInstance.exports.sync_external_table_counter(nextTableId);
     }
 
-    if (memoryTableId && wasmInstance?.exports.attach_memory_table) {
-      wasmInstance.exports.attach_memory_table(memoryTableId);
-      const confirmedId = wasmInstance.exports.get_memory_table_id?.() ?? memoryTableId;
+    if (homeTableId && wasmInstance?.exports.attach_memory_table) {
+      wasmInstance.exports.attach_memory_table(homeTableId);
+      const confirmedId = wasmInstance.exports.get_memory_table_id?.() ?? homeTableId;
       if (confirmedId > 0) {
-        memoryTableId = confirmedId;
+        homeTableId = confirmedId;
       }
     } else if (wasmInstance?.exports.get_memory_table_id) {
       const currentId = wasmInstance.exports.get_memory_table_id();
-      if (currentId > 0 && !memoryTableId) {
-        memoryTableId = currentId;
+      if (currentId > 0 && !homeTableId) {
+        homeTableId = currentId;
       }
-      if (memoryTableId) {
-        ensureExternalTable(memoryTableId);
+      if (homeTableId) {
+        ensureExternalTable(homeTableId);
       }
     }
 
@@ -578,7 +607,8 @@ export async function clearPersistedState() {
 export function getTableInfo() {
   const info = {
     tableCount: externalTables.size,
-    memoryTableId,
+    homeTableId,
+    memoryTableId: homeTableId, // Alias for backward compatibility
     nextTableId,
     tables: []
   };
@@ -592,6 +622,25 @@ export function getTableInfo() {
   }
   
   return info;
+}
+
+/**
+ * Get the _home table ID
+ * @returns {number|null} The _home table ID (formerly "Memory" table)
+ */
+export function getMemoryTableId() {
+  return homeTableId;
+}
+
+/**
+ * Enable or disable legacy "Memory" name alias
+ * @param {boolean} enabled - Whether to allow accessing _home via "Memory" name
+ */
+export function setMemoryAliasEnabled(enabled) {
+  memoryAliasEnabled = enabled;
+  if (enabled) {
+    console.warn('[Deprecated] "Memory" table name alias enabled - consider migrating to "_home"');
+  }
 }
 
 export default {
@@ -608,5 +657,7 @@ export default {
   saveState,
   loadState,
   clearPersistedState,
-  getTableInfo
+  getTableInfo,
+  getMemoryTableId,
+  setMemoryAliasEnabled
 };

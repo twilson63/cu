@@ -10,7 +10,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { EnhancedLuaWASM, EnhancedLuaError } from '../web/enhanced/lua-api-enhanced.js';
+import { EnhancedLuaWASM, EnhancedLuaError } from '../../web/enhanced/lua-api-enhanced.js';
 
 test.describe('Enhanced Lua WASM External Storage API', () => {
     let lua;
@@ -64,11 +64,11 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
         test('should persist simple function', async () => {
             const funcCode = 'function(x) return x * 2 end';
             
-            const persisted = await lua.persistFunction('Memory', 'double', funcCode);
+            const persisted = await lua.persistFunction('_home', 'double', funcCode);
             expect(persisted).toBe(true);
             
             // Function should be available after persistence
-            const result = lua.eval('return Memory.double(5)');
+            const result = lua.eval('return _home.double(5)');
             expect(result).toBe(10);
         });
 
@@ -83,10 +83,10 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
                 end
             `;
             
-            await lua.persistFunction('Memory', 'counterFactory', funcCode);
+            await lua.persistFunction('_home', 'counterFactory', funcCode);
             
             const result = lua.eval(`
-                local counter = Memory.counterFactory(100)
+                local counter = _home.counterFactory(100)
                 return {counter(), counter(), counter()}
             `);
             
@@ -101,20 +101,20 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             ];
             
             for (const func of functions) {
-                await lua.persistFunction('Memory', func.name, func.code);
+                await lua.persistFunction('_home', func.name, func.code);
             }
             
             // Test all functions
-            expect(lua.eval('return Memory.add(5, 3)')).toBe(8);
-            expect(lua.eval('return Memory.multiply(4, 7)')).toBe(28);
-            expect(lua.eval('return Memory.power(2, 3)')).toBe(8);
+            expect(lua.eval('return _home.add(5, 3)')).toBe(8);
+            expect(lua.eval('return _home.multiply(4, 7)')).toBe(28);
+            expect(lua.eval('return _home.power(2, 3)')).toBe(8);
         });
 
         test('should validate function code', async () => {
-            await expect(lua.persistFunction('Memory', 'invalid', ''))
+            await expect(lua.persistFunction('_home', 'invalid', ''))
                 .rejects.toThrow(EnhancedLuaError);
             
-            await expect(lua.persistFunction('Memory', 'invalid', 'not a function'))
+            await expect(lua.persistFunction('_home', 'invalid', 'not a function'))
                 .rejects.toThrow(EnhancedLuaError);
         });
 
@@ -136,11 +136,11 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
                 end
             `;
             
-            await lua.persistFunction('Memory', 'processor', largeFunction, {
+            await lua.persistFunction('_home', 'processor', largeFunction, {
                 compress: true
             });
             
-            const result = lua.eval('return #Memory.processor("test")');
+            const result = lua.eval('return #_home.processor("test")');
             expect(result).toBe(1000);
         });
     });
@@ -159,9 +159,9 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             expect(results.every(r => r.success)).toBe(true);
             
             // Verify data was set
-            expect(lua.eval('return Memory.users.user1.name')).toBe('Alice');
-            expect(lua.eval('return Memory.users.user2.age')).toBe(25);
-            expect(lua.eval('return Memory.users.user3.name')).toBe('Charlie');
+            expect(lua.eval('return _home.users.user1.name')).toBe('Alice');
+            expect(lua.eval('return _home.users.user2.age')).toBe(25);
+            expect(lua.eval('return _home.users.user3.name')).toBe('Charlie');
         });
 
         test('should process large batch efficiently', async () => {
@@ -181,8 +181,8 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             expect(duration).toBeLessThan(1000); // Should complete in under 1 second
             
             // Verify some items
-            expect(lua.eval('return Memory.items.item0.name')).toBe('Item 0');
-            expect(lua.eval('return Memory.items.item999.name')).toBe('Item 999');
+            expect(lua.eval('return _home.items.item0.name')).toBe('Item 0');
+            expect(lua.eval('return _home.items.item999.name')).toBe('Item 999');
         });
 
         test('should handle mixed operation types', async () => {
@@ -397,16 +397,16 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
     test.describe('Security & Validation', () => {
         test('should validate function code before persistence', async () => {
             // Empty code
-            await expect(lua.persistFunction('Memory', 'test', ''))
+            await expect(lua.persistFunction('_home', 'test', ''))
                 .rejects.toThrow('Function code must be a non-empty string');
             
             // Non-function code
-            await expect(lua.persistFunction('Memory', 'test', 'return 42'))
+            await expect(lua.persistFunction('_home', 'test', 'return 42'))
                 .rejects.toThrow('Code does not appear to be a function');
             
             // Too large
             const largeCode = 'function() return "' + 'x'.repeat(200000) + '" end';
-            await expect(lua.persistFunction('Memory', 'test', largeCode))
+            await expect(lua.persistFunction('_home', 'test', largeCode))
                 .rejects.toThrow('Function code exceeds 100KB limit');
         });
 
@@ -432,13 +432,13 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             `;
             
             // Should fail gracefully - no file system access in WASM
-            await expect(lua.persistFunction('Memory', 'inject', injectionCode))
+            await expect(lua.persistFunction('_home', 'inject', injectionCode))
                 .rejects.toThrow();
         });
 
         test('should provide detailed error information', async () => {
             try {
-                await lua.persistFunction('Memory', 'test', '');
+                await lua.persistFunction('_home', 'test', '');
             } catch (error) {
                 expect(error).toBeInstanceOf(EnhancedLuaError);
                 expect(error.code).toBe('INVALID_FUNCTION_CODE');
@@ -478,7 +478,7 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             // Function serialization performance
             const funcCode = 'function(x) return x * 2 end';
             const startTime1 = performance.now();
-            await lua.persistFunction('Memory', 'perf_test', funcCode);
+            await lua.persistFunction('_home', 'perf_test', funcCode);
             const duration1 = performance.now() - startTime1;
             
             expect(duration1).toBeLessThan(20); // < 20ms requirement
@@ -533,7 +533,7 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
     test.describe('State Management', () => {
         test('should save and load state correctly', async () => {
             // Set up some state
-            await lua.persistFunction('Memory', 'testFunc', 'function() return "test" end');
+            await lua.persistFunction('_home', 'testFunc', 'function() return "test" end');
             await lua.batchTableOperations([
                 { type: 'set', table: 'state_test', key: 'a', value: 1 },
                 { type: 'set', table: 'state_test', key: 'b', value: 2 },
@@ -554,9 +554,9 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             expect(loaded).toBe(true);
             
             // Verify state was restored
-            expect(lua.eval('return Memory.testFunc()')).toBe('test');
-            expect(lua.eval('return Memory.state_test.a')).toBe(1);
-            expect(lua.eval('return Memory.state_test.b')).toBe(2);
+            expect(lua.eval('return _home.testFunc()')).toBe('test');
+            expect(lua.eval('return _home.state_test.a')).toBe(1);
+            expect(lua.eval('return _home.state_test.b')).toBe(2);
         });
 
         test('should handle state save/load errors gracefully', async () => {
@@ -576,6 +576,136 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
         });
     });
 
+    test.describe('Backward Compatibility - Memory Alias', () => {
+        test('should support Memory as alias to _home', async () => {
+            // Write using _home, read using Memory
+            await lua.batchTableOperations([
+                { type: 'set', table: '_home', key: 'test_value', value: 'hello' },
+            ]);
+            
+            const result = lua.eval('return Memory.test_value');
+            expect(result).toBe('hello');
+        });
+
+        test('should support writing via Memory alias', async () => {
+            // Write using Memory, read using _home
+            lua.eval('Memory.from_alias = 42');
+            const result = lua.eval('return _home.from_alias');
+            expect(result).toBe(42);
+        });
+
+        test('should reference same table for Memory and _home', async () => {
+            // Set value via _home
+            lua.eval('_home.shared = 100');
+            
+            // Modify via Memory
+            lua.eval('Memory.shared = Memory.shared + 50');
+            
+            // Read via _home should show the change
+            const result = lua.eval('return _home.shared');
+            expect(result).toBe(150);
+        });
+
+        test('should persist functions via Memory alias', async () => {
+            const funcCode = 'function(x) return x * 3 end';
+            await lua.persistFunction('Memory', 'triple', funcCode);
+            
+            // Should be accessible via both Memory and _home
+            expect(lua.eval('return Memory.triple(5)')).toBe(15);
+            expect(lua.eval('return _home.triple(5)')).toBe(15);
+        });
+
+        test('should iterate over same keys for Memory and _home', async () => {
+            lua.eval(`
+                _home.a = 1
+                _home.b = 2
+                Memory.c = 3
+            `);
+            
+            const homeKeys = lua.eval(`
+                local keys = {}
+                for k, v in pairs(_home) do
+                    table.insert(keys, k)
+                end
+                table.sort(keys)
+                return table.concat(keys, ',')
+            `);
+            
+            const memoryKeys = lua.eval(`
+                local keys = {}
+                for k, v in pairs(Memory) do
+                    table.insert(keys, k)
+                end
+                table.sort(keys)
+                return table.concat(keys, ',')
+            `);
+            
+            expect(homeKeys).toBe(memoryKeys);
+        });
+
+        test('should maintain rawequal between Memory and _home', async () => {
+            const result = lua.eval('return rawequal(Memory, _home)');
+            expect(result).toBe(true);
+        });
+
+        test('should handle complex nested operations via both names', async () => {
+            lua.eval(`
+                _home.config = {
+                    settings = {
+                        theme = "dark",
+                        version = 1
+                    }
+                }
+            `);
+            
+            // Modify via Memory
+            lua.eval('Memory.config.settings.version = 2');
+            
+            // Read via _home
+            const result = lua.eval('return _home.config.settings.version');
+            expect(result).toBe(2);
+        });
+
+        test('should support function calls on both Memory and _home', async () => {
+            lua.eval(`
+                function _home.compute(x, y)
+                    return x + y
+                end
+            `);
+            
+            const viaHome = lua.eval('return _home.compute(10, 20)');
+            const viaMemory = lua.eval('return Memory.compute(10, 20)');
+            
+            expect(viaHome).toBe(30);
+            expect(viaMemory).toBe(30);
+        });
+
+        test('should allow deletion via either Memory or _home', async () => {
+            lua.eval('_home.temp = "temporary"');
+            expect(lua.eval('return Memory.temp')).toBe('temporary');
+            
+            lua.eval('Memory.temp = nil');
+            expect(lua.eval('return _home.temp')).toBeNull();
+        });
+
+        test('should support metatables on both Memory and _home', async () => {
+            lua.eval(`
+                local mt = {
+                    __index = function(t, k)
+                        return "default"
+                    end
+                }
+                setmetatable(_home, mt)
+            `);
+            
+            const viaHome = lua.eval('return _home.nonexistent');
+            const viaMemory = lua.eval('return Memory.nonexistent');
+            
+            expect(viaHome).toBe('default');
+            expect(viaMemory).toBe('default');
+        });
+    });
+
     test.describe('Error Handling & Edge Cases', () => {
         test('should handle uninitialized state', async () => {
             const newLua = new EnhancedLuaWASM();
@@ -585,7 +715,7 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             }).toThrow('Enhanced Lua WASM not initialized');
             
             expect(() => {
-                newLua.persistFunction('Memory', 'test', 'function() end');
+                newLua.persistFunction('_home', 'test', 'function() end');
             }).toThrow('Enhanced Lua WASM not initialized');
         });
 
@@ -594,7 +724,7 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             
             // Start multiple operations concurrently
             for (let i = 0; i < 10; i++) {
-                promises.push(lua.persistFunction('Memory', `func${i}`, `function() return ${i} end`));
+                promises.push(lua.persistFunction('_home', `func${i}`, `function() return ${i} end`));
                 promises.push(lua.batchTableOperations([
                     { type: 'set', table: 'concurrent', key: `key${i}`, value: i }
                 ]));
@@ -625,7 +755,7 @@ test.describe('Enhanced Lua WASM External Storage API', () => {
             lua.auditLog = [];
             
             // Perform various operations
-            await lua.persistFunction('Memory', 'audit_test', 'function() return true end');
+            await lua.persistFunction('_home', 'audit_test', 'function() return true end');
             await lua.batchTableOperations([
                 { type: 'set', table: 'audit', key: 'test', value: 'data' }
             ]);
@@ -654,7 +784,7 @@ test.describe('Performance Benchmarks', () => {
         const results = [];
         for (const funcCode of functions) {
             const start = performance.now();
-            await lua.persistFunction('Memory', 'bench', funcCode);
+            await lua.persistFunction('_home', 'bench', funcCode);
             const duration = performance.now() - start;
             results.push({ size: funcCode.length, duration });
         }

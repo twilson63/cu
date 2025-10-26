@@ -1,23 +1,20 @@
 # Agent Guidelines
-
-## Build/Test Commands
-- **Build**: `./build.sh` → generates `web/lua.wasm` (512KB malloc pool, 64KB IO buffer)
-- **Test**: `npm test` (Playwright) | Single: `npx playwright test -g "test name"`
-- **Demo**: `npm run demo` → serves on http://localhost:8000
-- **Clean**: `rm -rf .zig-cache .build web/lua.wasm && ./build.sh`
-
-## Code Style - Zig
-- Target: `wasm32-freestanding` (no WASI/Emscripten, static globals only)
-- Naming: `snake_case` funcs/vars, `PascalCase` types, prefix exports with `lua_`
-- Imports: `const mod = @import("file.zig");` exports in `build.sh`
-- Memory: Route via `lua_malloc/lua_realloc/lua_free`, never dynamic allocation
-- Returns: Use `c_int` for status codes (0=success, -1=error)
-
-## Code Style - JavaScript  
-- Modules: ES6 imports/exports, async/await for WASM loading
-- Error handling: Return `{error, value, output}` objects from API calls
-- Testing: Playwright with descriptive test names, use `test.describe` for grouping
-
-## Architecture
-- Lua C sources (33 files) + Zig libc stubs (49) → freestanding WASM
-- JS Bridge: `js_ext_table_*` FFI for IndexedDB persistence via `_G.Memory`
+**Build/Test Commands**
+- Build: `./build.sh` (outputs `web/lua.wasm`).
+- Test suite: `npm test` (Playwright).
+- Single test: `npx playwright test -g "test name"`.
+- Demo server: `npm run demo` on http://localhost:8000.
+- Clean + rebuild: `rm -rf .zig-cache .build web/lua.wasm && ./build.sh`.
+**Code Style - Zig**
+- Target `wasm32-freestanding`; avoid WASI/Emscripten APIs.
+- Use snake_case for funcs/vars, PascalCase for types, prefix exports with `lua_`.
+- Import via `const mod = @import("file.zig");`; keep exports wired in `build.sh`.
+- Route allocations through `lua_malloc/lua_realloc/lua_free`; return `c_int` (0 ok, -1 err).
+**Code Style - JavaScript**
+- Use ES modules, top-level async init for WASM loaders.
+- Prefer descriptive Playwright tests with `test.describe` groupings.
+- Handle APIs by returning `{ error, value, output }` objects; avoid throwing.
+- Keep persistence bridge via `js_ext_table_*` helpers untouched.
+**Formatting & Reviews**
+- Match existing formatting; no auto-format scripts provided.
+- No Cursor or Copilot rules in repo as of now.

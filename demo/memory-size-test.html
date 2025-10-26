@@ -36,7 +36,7 @@
   </style>
 </head>
 <body>
-  <h1>🗄️ External Memory Size Test</h1>
+  <h1>🗄️ External Storage Size Test</h1>
   
   <div class="stats" id="stats">
     Current stats will appear here...
@@ -57,7 +57,7 @@
     function updateStats() {
       const info = lua.getTableInfo();
       let stats = `External Tables: ${info.tableCount}\n`;
-      stats += `Memory Table ID: ${info.memoryTableId}\n`;
+      stats += `_home Table ID: ${info.memoryTableId}\n`;
       
       // Calculate approximate size
       let totalItems = 0;
@@ -87,9 +87,9 @@ local start = os.clock()
 
 -- Create 1000 items with mixed data types
 for i = 1, 1000 do
-  Memory["item_" .. i] = "Data " .. i
-  Memory["number_" .. i] = i * 3.14159
-  Memory["bool_" .. i] = (i % 2 == 0)
+  _home["item_" .. i] = "Data " .. i
+  _home["number_" .. i] = i * 3.14159
+  _home["bool_" .. i] = (i % 2 == 0)
   
   if i % 100 == 0 then
     print("Created " .. i .. " items...")
@@ -97,9 +97,9 @@ for i = 1, 1000 do
 end
 
 -- Also create some nested tables
-Memory.bigTable = {}
+_home.bigTable = {}
 for i = 1, 100 do
-  Memory.bigTable[i] = {
+  _home.bigTable[i] = {
     id = i,
     name = "Item " .. i,
     value = math.random() * 1000
@@ -111,11 +111,11 @@ print(string.format("Created 1000+ items in %.3f seconds", elapsed))
 
 -- Count items
 local count = 0
-for k, v in pairs(Memory) do
+for k, v in pairs(_home) do
   count = count + 1
 end
 
-return "Total items in Memory: " .. count`;
+return "Total items in _home: " .. count`;
       
       try {
         const result = await lua.compute(code);
@@ -147,7 +147,7 @@ print("Creating 100 unique functions...")
 for i = 1, 100 do
   -- Each function captures its own ID
   local id = i
-  Memory["func_" .. i] = function(x)
+  _home["func_" .. i] = function(x)
     return string.format("Function #%d called with %s", id, tostring(x))
   end
   
@@ -158,9 +158,9 @@ end
 
 -- Test a few
 print("\\nTesting some functions:")
-print(Memory.func_1("test"))
-print(Memory.func_50("hello"))
-print(Memory.func_100("world"))
+print(_home.func_1("test"))
+print(_home.func_50("hello"))
+print(_home.func_100("world"))
 
 -- Estimate size (Lua bytecode is typically 50-200 bytes per simple function)
 local estimated_size = 100 * 100  -- 100 functions * ~100 bytes each
@@ -194,14 +194,14 @@ local total_size = 0
 
 for i, size in ipairs(sizes) do
   local str = string.rep("x", size)
-  Memory["string_" .. size] = str
+  _home["string_" .. size] = str
   total_size = total_size + size
   print(string.format("Stored %d byte string", size))
 end
 
 -- Try to store a very large string (near the 16KB limit)
 local big_string = string.rep("Hello World! ", 1000)  -- ~13KB
-Memory.big_string = big_string
+_home.big_string = big_string
 print(string.format("Stored large string: %d bytes", #big_string))
 
 total_size = total_size + #big_string
@@ -236,7 +236,7 @@ return string.format("Total string data stored: %.1f KB", total_size / 1024)`;
         output.textContent += `  Usage: ${percent}%\n\n`;
       }
       
-      // Check current Memory table
+      // Check current _home table
       const code = `
 local count = 0
 local funcs = 0
@@ -244,7 +244,7 @@ local strings = 0
 local numbers = 0
 local string_bytes = 0
 
-for k, v in pairs(Memory) do
+for k, v in pairs(_home) do
   count = count + 1
   local t = type(v)
   if t == "function" then
@@ -257,7 +257,7 @@ for k, v in pairs(Memory) do
   end
 end
 
-print("Memory Table Contents:")
+print("_home Table Contents:")
 print("  Total items: " .. count)
 print("  Functions: " .. funcs)
 print("  Strings: " .. strings .. " (" .. string_bytes .. " bytes)")
@@ -278,11 +278,11 @@ return count`;
       const output = document.getElementById('output');
       
       const code = `
--- Clear Memory table
-for k, v in pairs(Memory) do
-  Memory[k] = nil
+-- Clear _home table
+for k, v in pairs(_home) do
+  _home[k] = nil
 end
-return "Memory cleared"`;
+return "_home cleared"`;
       
       await lua.compute(code);
       await lua.clearStorage();

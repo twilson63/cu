@@ -6,6 +6,32 @@
 
 ---
 
+## Important: The `_home` Table Concept
+
+The `_home` table is the primary persistent external table automatically created and attached at `_G._home`. Think of it as your application's "home base" for storing persistent data.
+
+**Key Characteristics:**
+- Automatically created on initialization
+- Accessible as `_G._home` in Lua
+- Persists across `eval()` calls
+- Backed by external storage (JavaScript)
+- Alias: `_G.Memory` (deprecated, but supported for backward compatibility)
+
+**Usage Example:**
+```lua
+-- Store persistent data
+_home.user_count = (_home.user_count or 0) + 1
+_home.last_login = os.time()
+
+-- Access in later eval() calls
+print("Total users: " .. _home.user_count)
+```
+
+**Rationale for Naming:**
+The name `_home` better conveys the concept of a persistent "home location" for your data, rather than the ambiguous term "Memory" which could be confused with WASM memory statistics.
+
+---
+
 ## Project Structure
 
 ```

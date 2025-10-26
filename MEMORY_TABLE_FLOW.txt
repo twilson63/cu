@@ -1,0 +1,258 @@
+MEMORY TABLE PERSISTENCE FLOW - DETAILED TRACE
+================================================
+
+Step-by-Step Flow from Lua Script to IndexedDB
+-----------------------------------------------
+
+[1] USER WRITES LUA CODE
+   Lua: Memory["mykey"] = "myvalue"
+   Location: User script / examples/*.lua
+   
+   ↓
+
+[2] LUA RUNTIME LOOKUP
+   Lua: _G["Memory"] → finds table proxy
+   Location: Lua VM in WASM
+   
+   ↓
+
+[3] TABLE PROXY ACCESS
+   Lua: table.__ext_table_id → reads numeric ID (e.g., 1)
+   Location: src/ext_table.zig:39-44 (push_ext_table)
+   
+   ↓
+
+[4] METATABLE INVOCATION
+   Lua: __newindex metatable method triggered
+   Location: src/ext_table.zig:152-185 (ext_table_newindex_impl)
+   Code:
+     - Reads table_id from table.__ext_table_id (line 158-161)
+     - Serializes key "mykey" (line 171-173)
+     - Serializes value "myvalue" (line 178-180)
+     - Calls js_ext_table_set(table_id=1, key, value) (line 182)
+   
+   ↓
+
+[5] JS BRIDGE FUNCTION
+   JS: js_ext_table_set(tableId=1, keyPtr, keyLen, valPtr, valLen)
+   Location: web/lua-api.js:95-109
+   Code:
+     - Reads key bytes from WASM memory
+     - Reads value bytes from WASM memory
+     - Gets/creates Map for table ID: ensureExternalTable(1)
+     - Stores: externalTables.get(1).set("mykey", Uint8Array[...])
+   
+   ↓
+
+[6] IN-MEMORY STORAGE
+   JS: externalTables = Map {
+     1 => Map {
+       "mykey" => Uint8Array[...serialized "myvalue"...]
+     }
+   }
+   Location: web/lua-api.js module-level variable
+   
+   ↓
+
+[7] USER CALLS SAVE
+   JS: saveState()
+   Location: web/lua-api.js:492-506
+   Gathers metadata:
+     metadata = {
+       memoryTableId: 1,    ← THIS IS THE KEY LINK
+       nextTableId: 2,
+       savedAt: "2025-10-26T...",
+       stateRestored: false
+     }
+   
+   ↓
+
+[8] PERSISTENCE LAYER
+   JS: persistence.saveTables(externalTables, metadata)
+   Location: web/lua-persistence.js:42-99
+   
+   Loop through externalTables:
+     For table ID 1:
+       serializedData = {
+         id: 1,    ← Numeric table ID
+         data: {
+           "mykey": {
+             _type: 'binary',
+             data: [array of bytes]
+           }
+         }
+       }
+   
+   Also saves:
+     metadataRecord = {
+       id: '__metadata__',
+       data: {
+         memoryTableId: 1,     ← CRITICAL: Maps "Memory" global to table ID 1
+         nextTableId: 2,
+         tableCount: 1,
+         tableIds: [1],
+         savedAt: "..."
+       }
+     }
+   
+   ↓
+
+[9] INDEXEDDB STORAGE
+   IndexedDB: LuaPersistentDB.externalTables
+   Records:
+     - { id: 1, data: { "mykey": { _type: 'binary', data: [...] } } }
+     - { id: '__metadata__', data: { memoryTableId: 1, ... } }
+
+
+RESTORATION FLOW - IndexedDB to Lua
+-------------------------------------
+
+[1] USER CALLS LOAD
+   JS: loadState()
+   Location: web/lua-api.js:511-571
+   
+   ↓
+
+[2] LOAD FROM INDEXEDDB
+   JS: persistence.loadTables()
+   Location: web/lua-persistence.js:105-148
+   Returns:
+     {
+       tables: Map {
+         1 => Map {
+           "mykey" => Uint8Array[...]
+         }
+       },
+       metadata: {
+         memoryTableId: 1,
+         nextTableId: 2,
+         ...
+       }
+     }
+   
+   ↓
+
+[3] RESTORE JS STATE
+   JS: web/lua-api.js:515-530
+   Code:
+     externalTables.clear()
+     for (const [id, table] of tables) {
+       // Restore table ID 1 with all its data
+       externalTables.set(1, tableMap)
+     }
+     memoryTableId = metadata.memoryTableId  // = 1
+   
+   ↓
+
+[4] SYNC WITH WASM
+   JS: wasmInstance.exports.attach_memory_table(memoryTableId)
+   Location: web/lua-api.js:549-550
+   Calls WASM function with memoryTableId = 1
+   
+   ↓
+
+[5] WASM REATTACHMENT
+   Zig: attach_memory_table(table_id: u32)
+   Location: src/main.zig:155-163
+   Code:
+     ext_table.attach_table(L, 1)      // Recreates table proxy with ID 1
+     lua.setglobal(L, "Memory")        // ← Sets "Memory" global to this table
+     memory_table_id = 1
+   
+   ↓
+
+[6] TABLE PROXY RECREATION
+   Zig: ext_table.attach_table(L, 1)
+   Location: src/ext_table.zig:53-60
+   Code:
+     push_ext_table(L, 1)
+       → Creates new Lua table
+       → table.__ext_table_id = 1
+       → Adds __index/__newindex metatables
+   
+   ↓
+
+[7] LUA RUNTIME READY
+   Lua: Memory → table proxy with __ext_table_id = 1
+   Lua: Memory["mykey"] → triggers __index
+     → reads from externalTables.get(1).get("mykey")
+     → returns "myvalue"
+
+
+KEY VARIABLES TRACKING MEMORY TABLE
+------------------------------------
+
+┌─────────────────────┬──────────────────────────────────────────┐
+│ Variable            │ Purpose                                   │
+├─────────────────────┼──────────────────────────────────────────┤
+│ Zig:                │                                           │
+│ memory_table_id     │ Stores numeric ID for Memory table (e.g. 1) │
+│                     │ src/main.zig:16                           │
+├─────────────────────┼──────────────────────────────────────────┤
+│ JS:                 │                                           │
+│ memoryTableId       │ Mirrors WASM memory_table_id              │
+│                     │ web/lua-api.js (module scope)             │
+├─────────────────────┼──────────────────────────────────────────┤
+│ IndexedDB:          │                                           │
+│ metadata.           │ Persists memoryTableId across sessions    │
+│ memoryTableId       │ web/lua-persistence.js                    │
+├─────────────────────┼──────────────────────────────────────────┤
+│ Lua:                │                                           │
+│ Memory              │ Global variable pointing to table proxy   │
+│                     │ Set by lua.setglobal(L, "Memory")         │
+├─────────────────────┼──────────────────────────────────────────┤
+│ Lua table:          │                                           │
+│ __ext_table_id      │ Field in table proxy storing numeric ID  │
+│                     │ Used by __index/__newindex metamethods    │
+└─────────────────────┴──────────────────────────────────────────┘
+
+
+SYNCHRONIZATION POINTS
+----------------------
+
+1. Initial Creation (src/main.zig:73-76)
+   memory_table_id ← ext_table.create_table() → returns new ID
+   lua.setglobal(L, "Memory") → creates global
+
+2. After WASM Init (web/lua-api.js:231-242)
+   memoryTableId ← wasmInstance.exports.get_memory_table_id()
+   Syncs JS variable with WASM variable
+
+3. On Save (web/lua-api.js:494-496)
+   metadata.memoryTableId ← memoryTableId
+   Persists to IndexedDB
+
+4. On Load (web/lua-api.js:522-525)
+   memoryTableId ← metadata.memoryTableId
+   Reads from IndexedDB
+
+5. Reattachment (web/lua-api.js:549-554)
+   wasmInstance.exports.attach_memory_table(memoryTableId)
+   Syncs JS → WASM
+
+6. Confirmation (web/lua-api.js:551)
+   memoryTableId ← wasmInstance.exports.get_memory_table_id()
+   Confirms synchronization
+
+
+THE CRITICAL INSIGHT
+--------------------
+
+The string "Memory" is ONLY used in TWO places in the entire system:
+
+  1. src/main.zig:75  → lua.setglobal(L, "Memory")
+  2. src/main.zig:161 → lua.setglobal(L, "Memory")
+
+Everything else uses NUMERIC IDs. The persistence system is completely
+name-agnostic. To rename "Memory" to "_home", you literally only need
+to change these two string literals.
+
+The numeric ID (e.g., 1) is what flows through the entire system:
+  Lua table.__ext_table_id
+    → WASM memory_table_id
+      → JS memoryTableId
+        → IndexedDB metadata.memoryTableId
+          → externalTables Map key
+
+The name "Memory" is just a Lua global variable pointing to a table
+that happens to have __ext_table_id = <some number>.
