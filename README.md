@@ -637,6 +637,39 @@ This guide documents:
 
 Perfect for building custom Lua runtimes or language bindings.
 
+## 📚 Complete Documentation
+
+### Core Documentation
+
+- **[API Reference](docs/API_REFERENCE.md)** - Complete JavaScript API documentation
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - System design and data flows
+- **[Enhanced Architecture](docs/ENHANCED_ARCHITECTURE.md)** - Advanced features and optimizations
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get up and running in 5 minutes
+- **[Technical Reference](docs/TECHNICAL_REFERENCE.md)** - Deep dive into implementation
+
+### Security & Advanced Use Cases
+
+- **[Secure Relay Architecture](docs/SECURE_RELAY_ARCHITECTURE.md)** - Build secure LLM relay services with wallet-signed requests and encrypted secret vaults
+- **[API Naming Clarification](docs/API_NAMING_CLARIFICATION.md)** - Understanding `compute()` vs `eval()` API naming
+
+### Integration Guides
+
+- **[WASM Low-Level API](docs/WASM_API_REFERENCE.md)** - Integrate with Rust, C, Go, and other languages
+- **[Browser Testing Guide](docs/BROWSER_TESTING.md)** - Playwright integration and testing strategies
+- **[Build & Deployment](docs/BUILD_AND_DEPLOYMENT_GUIDE.md)** - Production deployment guide
+
+### Feature Documentation
+
+- **[Function Persistence](docs/PHASE1_FUNCTION_PERSISTENCE.md)** - Serialize and restore Lua functions
+- **[Memory Protocol](docs/MEMORY_PROTOCOL.md)** - External storage protocol specification
+- **[Performance Guide](docs/PERFORMANCE_GUIDE.md)** - Optimization strategies and benchmarks
+
+### Migration & Troubleshooting
+
+- **[Migration to _home](docs/MIGRATION_TO_HOME.md)** - Upgrade from v1.x Memory table
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Implementation Decisions](docs/IMPLEMENTATION_DECISIONS_LOG.md)** - Design rationale and tradeoffs
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
