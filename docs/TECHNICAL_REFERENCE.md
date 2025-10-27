@@ -35,7 +35,7 @@ The name `_home` better conveys the concept of a persistent "home location" for 
 ## Project Structure
 
 ```
-wasm-compute/
+cu/
 ├── src/
 │   ├── main.zig              # Core module (155 lines)
 │   ├── lua.zig               # Lua API bindings (120 lines)

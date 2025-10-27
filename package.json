@@ -1,7 +1,7 @@
 {
-  "name": "wasm-compute",
+  "name": "cu",
   "version": "2.0.0",
-  "description": "Secure sandboxed Lua compute environment in WebAssembly with persistent storage, function serialization, and wallet-authenticated relay services",
+  "description": "Compute Unit - Secure sandboxed Lua compute environment in WebAssembly with persistent storage, function serialization, and wallet-authenticated relay services",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -22,9 +22,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/twilson63/wasm-compute.git"
+    "url": "git+https://github.com/twilson63/cu.git"
   },
   "keywords": [
+    "compute-unit",
+    "cu",
     "lua",
     "webassembly",
     "wasm",
@@ -42,9 +44,9 @@
   "author": "Tom Wilson <tom@hyper.io>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/twilson63/wasm-compute/issues"
+    "url": "https://github.com/twilson63/cu/issues"
   },
-  "homepage": "https://github.com/twilson63/wasm-compute#readme",
+  "homepage": "https://github.com/twilson63/cu#readme",
   "engines": {
     "node": ">=16.0.0"
   },

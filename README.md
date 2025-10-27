@@ -1,18 +1,19 @@
-# 🚀 WASM Compute
+# ⚡ cu - Compute Unit
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Build Status](https://img.shields.io/github/actions/workflow/status/twilson63/wasm-compute/build.yml?branch=main)
+![Build Status](https://img.shields.io/github/actions/workflow/status/twilson63/cu/build.yml?branch=main)
 ![Version](https://img.shields.io/badge/version-2.0.0-green.svg)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
 ![Lua](https://img.shields.io/badge/Lua-5.4.7-2C2D72?logo=lua&logoColor=white)
 
 ```
-__        ___    ____  __  __    ____                            _       
-\ \      / / \  / ___||  \/  |  / ___|___  _ __ ___  _ __  _   _| |_ ___ 
- \ \ /\ / / _ \ \___ \| |\/| | | |   / _ \| '_ ` _ \| '_ \| | | | __/ _ \
-  \ V  V / ___ \ ___) | |  | | | |__| (_) | | | | | | |_) | |_| | ||  __/
-   \_/\_/_/   \_\____/|_|  |_|  \____\___/|_| |_| |_| .__/ \__,_|\__\___|
-                                                     |_|                  
+                
+   ___ _   _ 
+  / __| | | |
+ | (__| |_| |
+  \___|\__,_|
+             
+  compute unit
 ```
 
 > **Secure Sandboxed Compute Platform** - Production-ready Lua 5.4.7 in WebAssembly with persistent storage, function serialization, wallet-authenticated relay services, and encrypted secret management
@@ -38,7 +39,7 @@ __        ___    ____  __  __    ____                            _
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://unpkg.com/wasm-compute@2.0.0/dist/wasm-compute.js"></script>
+    <script src="https://unpkg.com/cu@2.0.0/dist/cu.js"></script>
 </head>
 <body>
     <script type="module">
@@ -74,7 +75,7 @@ __        ___    ____  __  __    ____                            _
 ### npm Installation
 
 ```bash
-npm install wasm-compute
+npm install cu
 ```
 
 ```javascript
@@ -698,7 +699,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Lua Team](https://www.lua.org/) - For the amazing Lua language
 - [Zig Language](https://ziglang.org/) - For making WASM compilation straightforward
 - [WebAssembly Community](https://www.w3.org/community/webassembly/) - For the WebAssembly standard
-- [Contributors](https://github.com/twilson63/wasm-compute/contributors) - For making this project better
+- [Contributors](https://github.com/twilson63/cu/contributors) - For making this project better
 
 ## 📈 Project Status
 

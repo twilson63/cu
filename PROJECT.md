@@ -7,7 +7,7 @@ This is a production-ready Lua 5.4.7 interpreter compiled to WebAssembly with ad
 ### Directory Structure
 
 ```
-wasm-compute/
+cu/
 │
 ├── 📄 Core Files
 │   ├── README.md                    # Main documentation
