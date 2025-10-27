@@ -55,10 +55,14 @@ zig build-exe -target wasm32-freestanding -O ReleaseFast \
      .build/lstring.o .build/lstrlib.o .build/ltable.o .build/ltablib.o \
      .build/ltm.o .build/lundump.o .build/lutf8lib.o .build/lvm.o \
      .build/lzio.o \
-     -femit-bin=web/lua.wasm 2>&1 || { echo "❌ Zig compilation failed!"; exit 1; }
-SIZE=$(wc -c < web/lua.wasm)
+     -femit-bin=web/cu.wasm 2>&1 || { echo "❌ Zig compilation failed!"; exit 1; }
+
+# Create backward-compatible copy
+cp web/cu.wasm web/lua.wasm
+
+SIZE=$(wc -c < web/cu.wasm)
 SIZE_KB=$((SIZE / 1024))
 echo ""
 echo "✅ Build complete!"
-echo "   Output: web/lua.wasm"
-echo "   Size: ${SIZE_KB} KB"
+echo "   Primary:  web/cu.wasm (${SIZE_KB} KB)"
+echo "   Legacy:   web/lua.wasm (${SIZE_KB} KB) - deprecated"
