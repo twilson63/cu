@@ -8,7 +8,7 @@ Get started with Lua WASM in 5 minutes.
 
 ```bash
 git clone https://github.com/your-org/lua-wasm-demo.git
-cd lua-persistent-demo
+cd wasm-compute
 ```
 
 ### 2. Build the WASM Module

@@ -91,7 +91,7 @@ Python 3.11.0
 ```bash
 # Clone repository (if needed)
 git clone <repo-url>
-cd lua-persistent-demo
+cd wasm-compute
 
 # Run build script
 ./build.sh
@@ -670,7 +670,7 @@ ls -la src/lua/lapi.c
 
 # Or re-clone repository
 git clone <repo-url>
-cd lua-persistent-demo
+cd wasm-compute
 ./build.sh
 ```
 

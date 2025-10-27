@@ -220,7 +220,7 @@ The rename provides several benefits:
 - **Migration Guide:** [docs/MIGRATION_TO_HOME.md](docs/MIGRATION_TO_HOME.md)
 - **API Reference:** [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 - **Live Demo:** [http://localhost:8000/demo](http://localhost:8000/demo) (after `npm run demo`)
-- **GitHub Issues:** [Report bugs or request features](https://github.com/twilson63/lua-persistent-demo/issues)
+- **GitHub Issues:** [Report bugs or request features](https://github.com/twilson63/wasm-compute/issues)
 
 ---
 

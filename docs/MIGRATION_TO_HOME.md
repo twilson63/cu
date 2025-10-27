@@ -269,7 +269,7 @@ If you encounter issues during migration:
 
 1. Check the [Troubleshooting Guide](./TROUBLESHOOTING.md)
 2. Review the [API Reference](./API_REFERENCE.md) for updated function names
-3. Open an issue at https://github.com/twilson63/lua-persistent-demo/issues
+3. Open an issue at https://github.com/twilson63/wasm-compute/issues
 
 ## Summary
 

@@ -51,8 +51,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 ```bash
 # Clone your fork
-git clone https://github.com/your-username/lua-persistent-demo.git
-cd lua-persistent-demo
+git clone https://github.com/your-username/wasm-compute.git
+cd wasm-compute
 
 # Install dependencies (if any)
 npm install

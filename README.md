@@ -1,21 +1,21 @@
-# 🌙 Lua WASM External Storage API
+# 🚀 WASM Compute
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Build Status](https://img.shields.io/github/actions/workflow/status/yourusername/lua-wasm-external-storage/build.yml?branch=main)
+![Build Status](https://img.shields.io/github/actions/workflow/status/twilson63/wasm-compute/build.yml?branch=main)
 ![Version](https://img.shields.io/badge/version-2.0.0-green.svg)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
 ![Lua](https://img.shields.io/badge/Lua-5.4.7-2C2D72?logo=lua&logoColor=white)
 
 ```
- _                  __        ___   ____  __  __ 
-| |   _   _  __ _  \ \      / / \ / ___||  \/  |
-| |  | | | |/ _` |  \ \ /\ / / _ \___ \| |\/| |
-| |__| |_| | (_| |   \ V  V / ___ \___) | |  | |
-|_____\__,_|\__,_|    \_/\_/_/   \_\____/|_|  |_|
-                                                  
+__        ___    ____  __  __    ____                            _       
+\ \      / / \  / ___||  \/  |  / ___|___  _ __ ___  _ __  _   _| |_ ___ 
+ \ \ /\ / / _ \ \___ \| |\/| | | |   / _ \| '_ ` _ \| '_ \| | | | __/ _ \
+  \ V  V / ___ \ ___) | |  | | | |__| (_) | | | | | | |_) | |_| | ||  __/
+   \_/\_/_/   \_\____/|_|  |_|  \____\___/|_| |_| |_| .__/ \__,_|\__\___|
+                                                     |_|                  
 ```
 
-> **Enhanced Lua WASM External Storage API** - Production-ready Lua 5.4.7 in the browser with advanced persistence, function serialization, and high-performance data operations
+> **Secure Sandboxed Compute Platform** - Production-ready Lua 5.4.7 in WebAssembly with persistent storage, function serialization, wallet-authenticated relay services, and encrypted secret management
 
 ## ✨ Key Features
 
@@ -38,7 +38,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://unpkg.com/lua-wasm-external-storage@2.0.0/dist/lua-wasm.js"></script>
+    <script src="https://unpkg.com/wasm-compute@2.0.0/dist/wasm-compute.js"></script>
 </head>
 <body>
     <script type="module">
@@ -74,7 +74,7 @@
 ### npm Installation
 
 ```bash
-npm install lua-wasm-external-storage
+npm install wasm-compute
 ```
 
 ```javascript
@@ -698,7 +698,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Lua Team](https://www.lua.org/) - For the amazing Lua language
 - [Zig Language](https://ziglang.org/) - For making WASM compilation straightforward
 - [WebAssembly Community](https://www.w3.org/community/webassembly/) - For the WebAssembly standard
-- [Contributors](https://github.com/yourusername/lua-wasm-external-storage/contributors) - For making this project better
+- [Contributors](https://github.com/twilson63/wasm-compute/contributors) - For making this project better
 
 ## 📈 Project Status
 
