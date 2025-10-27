@@ -19,6 +19,7 @@ let wasmMemory = null;
 const externalTables = new Map();
 let nextTableId = 1;
 let homeTableId = null; // Renamed from memoryTableId
+let ioTableId = null; // For _io external table
 let stateRestored = false;
 
 // Table name constants
@@ -633,6 +634,227 @@ export function getMemoryTableId() {
 }
 
 /**
+ * Get the _io table ID
+ * @returns {number} The _io table ID
+ */
+export function getIoTableId() {
+  if (!wasmInstance) {
+    throw new Error('WASM not loaded');
+  }
+  
+  if (ioTableId === null) {
+    ioTableId = wasmInstance.exports.get_io_table_id?.() ?? 0;
+    if (ioTableId === 0) {
+      throw new Error('_io table not initialized');
+    }
+  }
+  
+  return ioTableId;
+}
+
+/**
+ * Helper to serialize JavaScript objects to Lua-compatible format
+ * Creates external tables for nested objects/arrays
+ * @param {*} obj - JavaScript value to serialize
+ * @returns {Uint8Array} Serialized binary data
+ */
+function serializeObject(obj) {
+  if (obj === null || obj === undefined) {
+    return new Uint8Array([0x00]); // nil
+  }
+  
+  if (typeof obj === 'boolean') {
+    return new Uint8Array([0x01, obj ? 1 : 0]);
+  }
+  
+  if (typeof obj === 'number') {
+    const buffer = new ArrayBuffer(9);
+    const view = new DataView(buffer);
+    view.setUint8(0, 0x02); // integer type
+    view.setBigInt64(1, BigInt(Math.floor(obj)), true);
+    return new Uint8Array(buffer);
+  }
+  
+  if (typeof obj === 'string') {
+    const encoder = new TextEncoder();
+    const strBytes = encoder.encode(obj);
+    const buffer = new ArrayBuffer(5 + strBytes.length);
+    const view = new DataView(buffer);
+    view.setUint8(0, 0x04); // string type
+    view.setUint32(1, strBytes.length, true);
+    new Uint8Array(buffer).set(strBytes, 5);
+    return new Uint8Array(buffer);
+  }
+  
+  if (Array.isArray(obj)) {
+    // Create external table for array
+    const arrayTableId = nextTableId++;
+    ensureExternalTable(arrayTableId);
+    
+    obj.forEach((item, index) => {
+      const serialized = serializeObject(item);
+      const table = externalTables.get(arrayTableId);
+      table.set(String(index + 1), serialized); // Lua arrays are 1-indexed
+    });
+    
+    // Return table reference
+    const buffer = new ArrayBuffer(5);
+    const view = new DataView(buffer);
+    view.setUint8(0, 0x07); // table_ref type
+    view.setUint32(1, arrayTableId, true);
+    return new Uint8Array(buffer);
+  }
+  
+  if (typeof obj === 'object') {
+    // Create external table for object
+    const objTableId = nextTableId++;
+    ensureExternalTable(objTableId);
+    
+    for (const [key, value] of Object.entries(obj)) {
+      const serialized = serializeObject(value);
+      const table = externalTables.get(objTableId);
+      table.set(key, serialized);
+    }
+    
+    // Return table reference
+    const buffer = new ArrayBuffer(5);
+    const view = new DataView(buffer);
+    view.setUint8(0, 0x07); // table_ref type
+    view.setUint32(1, objTableId, true);
+    return new Uint8Array(buffer);
+  }
+  
+  return new Uint8Array([0x00]); // fallback to nil
+}
+
+/**
+ * Helper to deserialize Lua binary data to JavaScript objects
+ * Reconstructs nested objects/arrays from external tables
+ * @param {Uint8Array} buffer - Binary data to deserialize
+ * @returns {*} JavaScript value
+ */
+function deserializeObject(buffer) {
+  if (!buffer || buffer.length === 0) {
+    return null;
+  }
+  
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  const type = view.getUint8(0);
+  
+  switch (type) {
+    case 0x00: // nil
+      return null;
+    
+    case 0x01: // boolean
+      if (buffer.length < 2) return null;
+      return view.getUint8(1) !== 0;
+    
+    case 0x02: // integer
+      if (buffer.length < 9) return null;
+      return Number(view.getBigInt64(1, true));
+    
+    case 0x03: // float
+      if (buffer.length < 9) return null;
+      return view.getFloat64(1, true);
+    
+    case 0x04: // string
+      if (buffer.length < 5) return null;
+      const strLen = view.getUint32(1, true);
+      if (buffer.length < 5 + strLen) return null;
+      const strBytes = buffer.slice(5, 5 + strLen);
+      return new TextDecoder().decode(strBytes);
+    
+    case 0x07: // table_ref
+      if (buffer.length < 5) return null;
+      const tableId = view.getUint32(1, true);
+      const table = externalTables.get(tableId);
+      if (!table) return null;
+      
+      // Check if it's an array (all keys are sequential numbers starting from 1)
+      const keys = Array.from(table.keys());
+      const isArray = keys.every((key, idx) => key === String(idx + 1));
+      
+      if (isArray) {
+        // Deserialize as array
+        const result = [];
+        for (let i = 1; i <= keys.length; i++) {
+          const value = table.get(String(i));
+          if (value !== undefined) {
+            result.push(deserializeObject(value));
+          }
+        }
+        return result;
+      } else {
+        // Deserialize as object
+        const result = {};
+        for (const [key, value] of table) {
+          result[key] = deserializeObject(value);
+        }
+        return result;
+      }
+    
+    default:
+      return null;
+  }
+}
+
+/**
+ * Set input data for _io.input
+ * @param {*} data - JavaScript object/value to send to Lua
+ */
+export function setInput(data) {
+  const tableId = getIoTableId();
+  const serialized = serializeObject(data);
+  const table = ensureExternalTable(tableId);
+  table.set('input', serialized);
+}
+
+/**
+ * Get output data from _io.output
+ * @returns {*} JavaScript object/value from Lua
+ */
+export function getOutput() {
+  const tableId = getIoTableId();
+  const table = externalTables.get(tableId);
+  if (!table) return null;
+  
+  const serialized = table.get('output');
+  if (!serialized) return null;
+  
+  return deserializeObject(serialized);
+}
+
+/**
+ * Set metadata for _io.meta
+ * @param {*} meta - Metadata object to send to Lua
+ */
+export function setMetadata(meta) {
+  const tableId = getIoTableId();
+  const serialized = serializeObject(meta);
+  const table = ensureExternalTable(tableId);
+  table.set('meta', serialized);
+}
+
+/**
+ * Clear all _io table contents (input, output, meta)
+ */
+export function clearIo() {
+  if (!wasmInstance) return;
+  
+  wasmInstance.exports.clear_io_table?.();
+  
+  // Also clear from JavaScript side
+  if (ioTableId !== null) {
+    const table = externalTables.get(ioTableId);
+    if (table) {
+      table.delete('input');
+      table.delete('output');
+      table.delete('meta');
+    }
+  }
+}
+
+/**
  * Enable or disable legacy "Memory" name alias
  * @param {boolean} enabled - Whether to allow accessing _home via "Memory" name
  */
@@ -659,5 +881,11 @@ export default {
   clearPersistedState,
   getTableInfo,
   getMemoryTableId,
-  setMemoryAliasEnabled
+  setMemoryAliasEnabled,
+  // _io table API
+  getIoTableId,
+  setInput,
+  getOutput,
+  setMetadata,
+  clearIo
 };

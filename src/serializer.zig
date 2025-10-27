@@ -1,6 +1,7 @@
 const std = @import("std");
 const lua = @import("lua.zig");
 const function_serializer = @import("function_serializer.zig");
+const ext_table = @import("ext_table.zig");
 
 const IO_BUFFER_SIZE = 64 * 1024;
 
@@ -12,6 +13,7 @@ pub const SerializationType = enum(u8) {
     string = 0x04,
     function_bytecode = 0x05, // For Lua functions
     function_ref = 0x06, // For C functions
+    table_ref = 0x07, // For external tables
 };
 
 pub const SerializationError = error{
@@ -80,6 +82,27 @@ pub fn serialize_value(L: *lua.lua_State, stack_index: c_int, buffer: [*]u8, max
         return function_serializer.serialize_function(L, stack_index, buffer, max_len);
     }
 
+    if (lua.istable(L, stack_index)) {
+        // Check if it's an external table by looking for __ext_table_id field
+        _ = lua.getfield(L, stack_index, "__ext_table_id");
+        if (!lua.isnil(L, -1)) {
+            // It's an external table - serialize as reference
+            const table_id = lua.tointeger(L, -1);
+            lua.pop(L, 1);
+
+            if (max_len < 5) return SerializationError.BufferTooSmall;
+            buffer[0] = @intFromEnum(SerializationType.table_ref);
+            const id_u32: u32 = @intCast(table_id);
+            const id_bytes = std.mem.asBytes(&id_u32);
+            @memcpy(buffer[1..5], id_bytes);
+            return 5;
+        }
+        lua.pop(L, 1);
+
+        // Regular table - not supported in serialization
+        return SerializationError.TypeMismatch;
+    }
+
     return SerializationError.TypeMismatch;
 }
 
@@ -140,6 +163,16 @@ pub fn deserialize_value(L: *lua.lua_State, buffer: [*]const u8, len: usize) Ser
             // Delegate to function serializer for deserialization
             // Pass the full buffer including type byte
             try function_serializer.deserialize_function(L, value_type, buffer, len);
+        },
+        SerializationType.table_ref => {
+            if (len < 5) return SerializationError.InvalidFormat;
+            const table_id: u32 = @as(u32, buffer[1]) |
+                (@as(u32, buffer[2]) << 8) |
+                (@as(u32, buffer[3]) << 16) |
+                (@as(u32, buffer[4]) << 24);
+
+            // Attach the external table
+            ext_table.attach_table(L, table_id);
         },
     }
 }

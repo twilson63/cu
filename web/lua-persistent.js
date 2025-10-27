@@ -14,6 +14,8 @@ class LuaPersistent {
     async load(wasmPath) {
         const imports = {
             env: {
+                js_time_now: () => Date.now(),
+                
                 js_ext_table_set: (tableId, keyPtr, keyLen, valPtr, valLen) => {
                     if (!this.externalTables.has(tableId)) {
                         this.externalTables.set(tableId, new Map());
@@ -101,7 +103,9 @@ class LuaPersistent {
             }
         };
 
-        const response = await fetch(wasmPath);
+        // Handle both absolute and relative URLs
+        const url = wasmPath.startsWith('http') ? wasmPath : `http://localhost:8000/${wasmPath}`;
+        const response = await fetch(url);
         const bytes = await response.arrayBuffer();
         const result = await WebAssembly.instantiate(bytes, imports);
         
@@ -127,13 +131,55 @@ class LuaPersistent {
         
         new Uint8Array(this.memory.buffer, this.bufferPtr, input.length).set(input);
         
-        const resultLen = this.instance.exports.eval(input.length);
+        const resultLen = this.instance.exports.compute(this.bufferPtr, input.length);
         if (resultLen < 0) {
-            throw new Error(`Eval error: ${resultLen}`);
+            return null; // Error case
         }
         
-        const output = new Uint8Array(this.memory.buffer, this.bufferPtr, resultLen);
-        return this.decoder.decode(output);
+        // Deserialize the result
+        const buffer = new Uint8Array(this.memory.buffer, this.bufferPtr, resultLen);
+        return this.deserializeResult(buffer, resultLen);
+    }
+    
+    deserializeResult(buffer, length) {
+        if (length < 5) {
+            return { output: '', value: null };
+        }
+        
+        // Read output length (first 4 bytes)
+        const outputLen = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+        let offset = 4;
+        
+        // Read output string
+        const output = this.decoder.decode(buffer.slice(offset, offset + outputLen));
+        offset += outputLen;
+        
+        // Read result type and value
+        if (offset >= length) {
+            return { output, value: null };
+        }
+        
+        const typeTag = buffer[offset++];
+        let value = null;
+        
+        if (typeTag === 0x00) { // nil
+            value = null;
+        } else if (typeTag === 0x01) { // boolean
+            value = buffer[offset] !== 0;
+        } else if (typeTag === 0x02) { // integer
+            const low = buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16) | (buffer[offset + 3] << 24);
+            const high = buffer[offset + 4] | (buffer[offset + 5] << 8) | (buffer[offset + 6] << 16) | (buffer[offset + 7] << 24);
+            value = low + high * 0x100000000;
+        } else if (typeTag === 0x03) { // float
+            const view = new DataView(buffer.buffer, buffer.byteOffset + offset, 8);
+            value = view.getFloat64(0, true);
+        } else if (typeTag === 0x04) { // string
+            const strLen = buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16) | (buffer[offset + 3] << 24);
+            offset += 4;
+            value = this.decoder.decode(buffer.slice(offset, offset + strLen));
+        }
+        
+        return { output, value };
     }
 
     // Persistence
@@ -188,3 +234,5 @@ class LuaPersistent {
         };
     }
 }
+
+export default LuaPersistent;

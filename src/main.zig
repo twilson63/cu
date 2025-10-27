@@ -18,6 +18,7 @@ var heap: [TOTAL_MEMORY]u8 align(4096) = undefined;
 var global_lua_state: ?*lua.lua_State = null;
 var lua_memory_used: usize = 0;
 var memory_table_id: u32 = 0;
+var io_table_id: u32 = 0;
 var enable_memory_alias: bool = true; // Feature flag for backward compatibility
 
 extern fn js_ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int;
@@ -66,6 +67,7 @@ export fn init() i32 {
     ext_table.setup_ext_table_library(L.?);
     setup_print_override(L.?);
     setup_memory_global(L.?);
+    setup_io_global(L.?);
 
     return 0;
 }
@@ -86,6 +88,11 @@ fn setup_memory_global(L: *lua.lua_State) void {
     } else {
         lua.pop(L, 1); // Clean up duplicate if alias disabled
     }
+}
+
+fn setup_io_global(L: *lua.lua_State) void {
+    io_table_id = ext_table.create_table(L);
+    lua.setglobal(L, "_io");
 }
 
 pub fn ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int {
@@ -187,6 +194,25 @@ export fn get_memory_table_id() u32 {
     return memory_table_id;
 }
 
+export fn get_io_table_id() u32 {
+    return io_table_id;
+}
+
+export fn clear_io_table() void {
+    if (global_lua_state == null) return;
+    const L = global_lua_state.?;
+
+    // Clear _io.input, _io.output, _io.meta
+    _ = lua.getglobal(L, "_io");
+    lua.pushnil(L);
+    lua.setfield(L, -2, "input");
+    lua.pushnil(L);
+    lua.setfield(L, -2, "output");
+    lua.pushnil(L);
+    lua.setfield(L, -2, "meta");
+    lua.pop(L, 1);
+}
+
 export fn sync_external_table_counter(next_id: u32) void {
     ext_table.sync_counter(next_id);
 }
@@ -209,4 +235,4 @@ pub fn _start_lua() void {
     _ = run_gc;
 }
 
-var _exports_keepalive: usize = @intFromPtr(&init) + @intFromPtr(&compute) + @intFromPtr(&get_buffer_ptr) + @intFromPtr(&get_buffer_size) + @intFromPtr(&get_memory_stats) + @intFromPtr(&run_gc);
+var _exports_keepalive: usize = @intFromPtr(&init) + @intFromPtr(&compute) + @intFromPtr(&get_buffer_ptr) + @intFromPtr(&get_buffer_size) + @intFromPtr(&get_memory_stats) + @intFromPtr(&run_gc) + @intFromPtr(&get_io_table_id) + @intFromPtr(&clear_io_table);

@@ -103,6 +103,112 @@ await lua.saveState();
 
 ## 📖 Advanced Usage Examples
 
+### Structured I/O with _io Table
+
+The `_io` external table enables passing arbitrarily large structured data between JavaScript and Lua, bypassing the 64KB I/O buffer limitation. Perfect for processing large datasets while preserving type information.
+
+```javascript
+import lua from './lua-api.js';
+
+// Initialize
+await lua.loadLuaWasm();
+lua.init();
+
+// Process structured data with setInput/getOutput
+lua.setInput({
+  users: [
+    { id: 1, name: "Alice", score: 95 },
+    { id: 2, name: "Bob", score: 87 },
+    { id: 3, name: "Charlie", score: 92 }
+  ],
+  threshold: 90
+});
+
+lua.compute(`
+  local users = _io.input.users
+  local threshold = _io.input.threshold
+  
+  local highScorers = {}
+  for i, user in ipairs(users) do
+    if user.score >= threshold then
+      table.insert(highScorers, {
+        name = user.name,
+        score = user.score
+      })
+    end
+  end
+  
+  _io.output = {
+    highScorers = highScorers,
+    count = #highScorers
+  }
+`);
+
+const result = lua.getOutput();
+console.log(result);
+// {
+//   highScorers: [
+//     { name: "Alice", score: 95 },
+//     { name: "Charlie", score: 92 }
+//   ],
+//   count: 2
+// }
+```
+
+**Using the IoWrapper for convenience:**
+
+```javascript
+import { IoWrapper } from './io-wrapper.js';
+
+const io = new IoWrapper();
+
+// Simple request/response pattern
+const result = await io.computeWithIo(`
+  local data = _io.input.dataset
+  local sum = 0
+  for i, v in ipairs(data) do
+    sum = sum + v
+  end
+  _io.output = { sum = sum, average = sum / #data }
+`, {
+  dataset: [10, 20, 30, 40, 50]
+});
+
+console.log(result.output); // { sum: 150, average: 30 }
+
+// Stream processing for very large datasets
+const largeDataset = new Array(100000).fill(0).map((_, i) => ({
+  id: i,
+  value: Math.random() * 100
+}));
+
+const results = await io.processStream(`
+  local batch = _io.input.batch
+  local processed = {}
+  for i, item in ipairs(batch) do
+    processed[i] = {
+      id = item.id,
+      doubled = item.value * 2
+    }
+  end
+  _io.output = processed
+`, largeDataset, { batchSize: 1000 });
+```
+
+**Performance Comparison:**
+
+| Approach | Max Data Size | Type Preservation | Use Case |
+|----------|---------------|-------------------|----------|
+| Direct `compute()` | 64KB (buffer) | Limited | Simple calculations, small data |
+| `_io` table | Unlimited* | Full | Large datasets, complex structures |
+| `_home` table | Unlimited* | Full | Persistent data across sessions |
+
+*Limited only by available browser memory
+
+For detailed _io table documentation, see [IO_TABLE_API.md](docs/IO_TABLE_API.md).
+
+---
+
 ### Function Persistence
 
 ```javascript
@@ -343,6 +449,181 @@ Get information about external tables.
 - `memoryTableId`: ID of _home table
 - `tableCount`: Total number of tables
 - `tableIds`: Array of all table IDs
+
+### _io Table API
+
+The `_io` table provides structured input/output capabilities for passing large datasets between JavaScript and Lua.
+
+#### `lua.getIoTableId()`
+Get the numeric identifier for the `_io` external table.
+
+**Returns:** `number|null` - Table ID or null if not initialized
+
+#### `lua.setInput(data)`
+Set input data accessible as `_io.input` in Lua.
+
+**Parameters:**
+- `data` (any): JavaScript value (primitives, objects, arrays, nested structures)
+
+**Example:**
+```javascript
+lua.setInput({
+  users: [{ id: 1, name: "Alice" }],
+  config: { limit: 100 }
+});
+
+lua.compute(`
+  local users = _io.input.users
+  local limit = _io.input.config.limit
+  -- Process data
+`);
+```
+
+#### `lua.getOutput()`
+Retrieve output data set by Lua via `_io.output`.
+
+**Returns:** `any` - JavaScript value matching the structure set in Lua
+
+**Example:**
+```javascript
+lua.compute(`
+  _io.output = {
+    result = "success",
+    items = {1, 2, 3}
+  }
+`);
+
+const output = lua.getOutput();
+console.log(output); // { result: "success", items: [1, 2, 3] }
+```
+
+#### `lua.setInputField(key, value)`
+Set a specific field in `_io.input` without replacing entire input.
+
+**Parameters:**
+- `key` (string): Field name
+- `value` (any): Value to set
+
+#### `lua.getOutputField(key)`
+Retrieve a specific field from `_io.output`.
+
+**Parameters:**
+- `key` (string): Field name
+
+**Returns:** `any` - Field value or null
+
+#### `lua.setMetadata(meta)`
+Set metadata in `_io.meta` for tracking and debugging.
+
+**Parameters:**
+- `meta` (object): Metadata object
+
+**Example:**
+```javascript
+lua.setMetadata({
+  requestId: 'req-123',
+  timestamp: Date.now()
+});
+```
+
+#### `lua.clearIo()`
+Clear all data in the `_io` table (input, output, and metadata).
+
+**Returns:** `void`
+
+**Example:**
+```javascript
+lua.clearIo(); // Reset _io state between requests
+```
+
+### IoWrapper Class
+
+High-level wrapper for common _io table patterns.
+
+#### `new IoWrapper()`
+Create a new IoWrapper instance.
+
+**Example:**
+```javascript
+import { IoWrapper } from './io-wrapper.js';
+const io = new IoWrapper();
+```
+
+#### `io.computeWithIo(code, inputData, options)`
+Execute Lua code with structured input/output.
+
+**Parameters:**
+- `code` (string): Lua code to execute
+- `inputData` (any): Input data for `_io.input`
+- `options` (object): Optional configuration
+  - `clearBefore` (boolean): Clear I/O before execution (default: true)
+  - `metadata` (object): Additional metadata
+
+**Returns:** `Promise<Object>` - `{ returnValue, output, metadata }`
+
+**Example:**
+```javascript
+const result = await io.computeWithIo(`
+  local sum = 0
+  for i, v in ipairs(_io.input.numbers) do
+    sum = sum + v
+  end
+  _io.output = { sum = sum }
+`, { numbers: [1, 2, 3, 4, 5] });
+
+console.log(result.output.sum); // 15
+```
+
+#### `io.processStream(code, dataStream, options)`
+Process large datasets in batches.
+
+**Parameters:**
+- `code` (string): Lua code to execute per batch
+- `dataStream` (array): Array of items to process
+- `options` (object): Optional configuration
+  - `batchSize` (number): Items per batch (default: 100)
+
+**Returns:** `Promise<Array>` - Array of outputs from each batch
+
+**Example:**
+```javascript
+const results = await io.processStream(`
+  local batch = _io.input.batch
+  local processed = {}
+  for i, item in ipairs(batch) do
+    processed[i] = item.value * 2
+  end
+  _io.output = processed
+`, largeDataset, { batchSize: 1000 });
+```
+
+#### `io.request(method, params)`
+RPC-style method invocation pattern.
+
+**Parameters:**
+- `method` (string): Lua function name to call
+- `params` (object): Parameters to pass
+
+**Returns:** `Promise<Object>` - Result from computeWithIo
+
+**Example:**
+```javascript
+// Define handler in Lua
+await lua.compute(`
+  function calculateStats(params)
+    local sum = 0
+    for _, v in ipairs(params.data) do
+      sum = sum + v
+    end
+    return { sum = sum }
+  end
+`);
+
+// Call via request
+const result = await io.request('calculateStats', {
+  data: [1, 2, 3, 4, 5]
+});
+```
 
 ### Lua Table Access Patterns
 
@@ -662,6 +943,7 @@ Perfect for building custom Lua runtimes or language bindings.
 ### Feature Documentation
 
 - **[Function Persistence](docs/PHASE1_FUNCTION_PERSISTENCE.md)** - Serialize and restore Lua functions
+- **[_io External Table API](docs/IO_TABLE_API.md)** - Structured I/O for large datasets
 - **[Memory Protocol](docs/MEMORY_PROTOCOL.md)** - External storage protocol specification
 - **[Performance Guide](docs/PERFORMANCE_GUIDE.md)** - Optimization strategies and benchmarks
 
