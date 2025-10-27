@@ -167,9 +167,15 @@ class LuaPersistent {
         } else if (typeTag === 0x01) { // boolean
             value = buffer[offset] !== 0;
         } else if (typeTag === 0x02) { // integer
-            const low = buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16) | (buffer[offset + 3] << 24);
-            const high = buffer[offset + 4] | (buffer[offset + 5] << 8) | (buffer[offset + 6] << 16) | (buffer[offset + 7] << 24);
-            value = low + high * 0x100000000;
+            // Read as little-endian i64 using DataView
+            const view = new DataView(buffer.buffer, buffer.byteOffset + offset, 8);
+            const bigIntValue = view.getBigInt64(0, true);
+            // Convert to number if it fits safely
+            if (bigIntValue >= Number.MIN_SAFE_INTEGER && bigIntValue <= Number.MAX_SAFE_INTEGER) {
+                value = Number(bigIntValue);
+            } else {
+                value = bigIntValue; // Keep as BigInt for large values
+            }
         } else if (typeTag === 0x03) { // float
             const view = new DataView(buffer.buffer, buffer.byteOffset + offset, 8);
             value = view.getFloat64(0, true);

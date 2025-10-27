@@ -745,12 +745,108 @@ export fn atan2(y: f64, x: f64) f64 {
 
 // String formatting
 export fn snprintf(buf: [*]u8, size: usize, format: [*:0]const u8, ...) c_int {
-    // Very basic implementation - just copy format string
+    if (size == 0) return 0;
+
+    var args = @cVaStart();
+    defer @cVaEnd(&args);
+
     const fmt_len = strlen(format);
-    const copy_len = @min(fmt_len, size - 1);
-    @memcpy(buf[0..copy_len], format[0..copy_len]);
-    buf[copy_len] = 0;
-    return @as(c_int, @intCast(copy_len));
+    var out_idx: usize = 0;
+    var fmt_idx: usize = 0;
+
+    while (fmt_idx < fmt_len and out_idx < size - 1) : (fmt_idx += 1) {
+        if (format[fmt_idx] == '%') {
+            fmt_idx += 1;
+            if (fmt_idx >= fmt_len) break;
+
+            // Handle format specifiers
+            if (format[fmt_idx] == '%') {
+                // Literal %
+                buf[out_idx] = '%';
+                out_idx += 1;
+            } else if (format[fmt_idx] == 'd') {
+                // Integer (int)
+                const val = @cVaArg(&args, c_int);
+                const result = std.fmt.bufPrint(buf[out_idx .. size - 1], "{d}", .{val}) catch {
+                    buf[out_idx] = '0';
+                    out_idx += 1;
+                    continue;
+                };
+                out_idx += result.len;
+            } else if (format[fmt_idx] == 'l') {
+                // Check for ll (long long)
+                if (fmt_idx + 1 < fmt_len and format[fmt_idx + 1] == 'l') {
+                    fmt_idx += 1;
+                    if (fmt_idx + 1 < fmt_len and format[fmt_idx + 1] == 'd') {
+                        fmt_idx += 1;
+                        // long long integer
+                        const val = @cVaArg(&args, c_longlong);
+                        const result = std.fmt.bufPrint(buf[out_idx .. size - 1], "{d}", .{val}) catch {
+                            buf[out_idx] = '0';
+                            out_idx += 1;
+                            continue;
+                        };
+                        out_idx += result.len;
+                    }
+                } else if (fmt_idx + 1 < fmt_len and format[fmt_idx + 1] == 'd') {
+                    fmt_idx += 1;
+                    // long integer
+                    const val = @cVaArg(&args, c_long);
+                    const result = std.fmt.bufPrint(buf[out_idx .. size - 1], "{d}", .{val}) catch {
+                        buf[out_idx] = '0';
+                        out_idx += 1;
+                        continue;
+                    };
+                    out_idx += result.len;
+                } else if (fmt_idx + 1 < fmt_len and format[fmt_idx + 1] == 'f') {
+                    fmt_idx += 1;
+                    // double
+                    const val = @cVaArg(&args, f64);
+                    const result = std.fmt.bufPrint(buf[out_idx .. size - 1], "{d}", .{val}) catch {
+                        buf[out_idx] = '0';
+                        out_idx += 1;
+                        continue;
+                    };
+                    out_idx += result.len;
+                }
+            } else if (format[fmt_idx] == 'f') {
+                // Float
+                const val = @cVaArg(&args, f64);
+                const result = std.fmt.bufPrint(buf[out_idx .. size - 1], "{d}", .{val}) catch {
+                    buf[out_idx] = '0';
+                    out_idx += 1;
+                    continue;
+                };
+                out_idx += result.len;
+            } else if (format[fmt_idx] == 's') {
+                // String
+                const str = @cVaArg(&args, [*:0]const u8);
+                const str_len = strlen(str);
+                const copy_len = @min(str_len, size - 1 - out_idx);
+                @memcpy(buf[out_idx .. out_idx + copy_len], str[0..copy_len]);
+                out_idx += copy_len;
+            } else if (format[fmt_idx] == 'c') {
+                // Character
+                const ch = @cVaArg(&args, c_int);
+                buf[out_idx] = @intCast(ch & 0xFF);
+                out_idx += 1;
+            } else {
+                // Unknown format, just copy the % and character
+                buf[out_idx] = '%';
+                out_idx += 1;
+                if (out_idx < size - 1) {
+                    buf[out_idx] = format[fmt_idx];
+                    out_idx += 1;
+                }
+            }
+        } else {
+            buf[out_idx] = format[fmt_idx];
+            out_idx += 1;
+        }
+    }
+
+    buf[out_idx] = 0;
+    return @as(c_int, @intCast(out_idx));
 }
 
 // Character class functions

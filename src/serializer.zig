@@ -62,8 +62,7 @@ pub fn serialize_value(L: *lua.lua_State, stack_index: c_int, buffer: [*]u8, max
         var str_len: usize = 0;
         const str = lua.tolstring(L, stack_index, &str_len);
 
-        if (str_len == 0) return SerializationError.InvalidFormat;
-
+        // Allow empty strings (str_len == 0 is valid)
         if (max_len < 5 + str_len) return SerializationError.BufferTooSmall;
 
         buffer[0] = @intFromEnum(SerializationType.string);
@@ -72,7 +71,9 @@ pub fn serialize_value(L: *lua.lua_State, stack_index: c_int, buffer: [*]u8, max
         const len_bytes = std.mem.asBytes(&len_u32);
         @memcpy(buffer[1..5], len_bytes);
 
-        @memcpy(buffer[5 .. 5 + str_len], str[0..str_len]);
+        if (str_len > 0) {
+            @memcpy(buffer[5 .. 5 + str_len], str[0..str_len]);
+        }
 
         return 5 + str_len;
     }
@@ -123,29 +124,18 @@ pub fn deserialize_value(L: *lua.lua_State, buffer: [*]const u8, len: usize) Ser
         },
         SerializationType.integer => {
             if (len < 9) return SerializationError.InvalidFormat;
-            var int_val: i64 = 0;
-            int_val = @as(i64, buffer[1]) |
-                (@as(i64, buffer[2]) << 8) |
-                (@as(i64, buffer[3]) << 16) |
-                (@as(i64, buffer[4]) << 24) |
-                (@as(i64, buffer[5]) << 32) |
-                (@as(i64, buffer[6]) << 40) |
-                (@as(i64, buffer[7]) << 48) |
-                (@as(i64, buffer[8]) << 56);
+            // Read as little-endian i64
+            var int_val: i64 = undefined;
+            const bytes = buffer[1..9];
+            @memcpy(std.mem.asBytes(&int_val), bytes);
             lua.pushinteger(L, int_val);
         },
         SerializationType.float => {
             if (len < 9) return SerializationError.InvalidFormat;
-            var float_int: u64 = 0;
-            float_int = @as(u64, buffer[1]) |
-                (@as(u64, buffer[2]) << 8) |
-                (@as(u64, buffer[3]) << 16) |
-                (@as(u64, buffer[4]) << 24) |
-                (@as(u64, buffer[5]) << 32) |
-                (@as(u64, buffer[6]) << 40) |
-                (@as(u64, buffer[7]) << 48) |
-                (@as(u64, buffer[8]) << 56);
-            const float_val: f64 = @bitCast(float_int);
+            // Read as little-endian f64
+            var float_val: f64 = undefined;
+            const bytes = buffer[1..9];
+            @memcpy(std.mem.asBytes(&float_val), bytes);
             lua.pushnumber(L, float_val);
         },
         SerializationType.string => {
