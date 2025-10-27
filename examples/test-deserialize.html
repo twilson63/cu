@@ -14,7 +14,7 @@
   <div id="results"></div>
   
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
     
     window.runTests = async () => {
       const results = document.getElementById('results');
@@ -22,7 +22,7 @@
       
       try {
         // Load and init
-        await lua.loadLuaWasm();
+        await cu.load();
         lua.init();
         
         // Test cases

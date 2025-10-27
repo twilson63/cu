@@ -1,6 +1,6 @@
 # Release Notes - Version 2.0.0
 
-## 🚀 Lua WASM External Storage API v2.0.0
+## 🚀 Cu WASM External Storage API v2.0.0
 
 **Release Date:** October 26, 2025  
 **Migration Required:** Recommended (but not mandatory)  

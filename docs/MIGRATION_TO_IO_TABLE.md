@@ -1443,4 +1443,4 @@ _io.output = { restored = _home.lastInput }
 
 ---
 
-**Ready to migrate?** Start with one simple use case, test thoroughly, then gradually migrate more complex patterns. The `_io` table will unlock new possibilities for your Lua WASM applications!
+**Ready to migrate?** Start with one simple use case, test thoroughly, then gradually migrate more complex patterns. The `_io` table will unlock new possibilities for your Cu WASM applications!

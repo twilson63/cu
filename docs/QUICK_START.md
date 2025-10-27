@@ -1,6 +1,6 @@
-# Quick Start Guide - Lua WASM Persistent
+# Quick Start Guide - Cu WASM Persistent
 
-Get started with Lua WASM in 5 minutes.
+Get started with Cu WASM in 5 minutes.
 
 ## Installation
 
@@ -21,7 +21,7 @@ cd cu
 - Zig 0.14+ ([Download](https://ziglang.org/download))
 - Unix-like system (Linux, macOS, or WSL on Windows)
 
-**Output:** `web/lua.wasm` (binary file)
+**Output:** `web/cu.wasm` (primary), `web/lua.wasm` (deprecated copy)
 
 ### 3. Start Web Server
 

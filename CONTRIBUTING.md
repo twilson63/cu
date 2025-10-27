@@ -110,7 +110,7 @@ pub fn create_external_table(allocator: std.mem.Allocator) !*ExternalTable {
 Example:
 ```javascript
 /**
- * Load Lua WASM module
+ * Load Cu WASM module
  * @returns {Promise<boolean>} Success status
  */
 export async function loadLuaWasm() {

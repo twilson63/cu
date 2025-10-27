@@ -1,0 +1,46 @@
+# Development files
+.git
+.github
+node_modules
+.zig-cache
+.build
+target
+
+# Test files
+tests/
+test-results/
+playwright-report/
+playwright.test.js
+
+# Demo files (users should use the web/ version)
+demo/
+
+# Examples (users should use the web/ version)
+examples/
+
+# Documentation (keep only README.md)
+docs/
+PRDs/
+PRPs/
+*.md
+!README.md
+!LICENSE
+
+# Build artifacts
+*.bak
+*.backup
+*.tmp
+*.log
+.DS_Store
+
+# Archive
+.archive/
+
+# Project management
+PROJECT.md
+AGENTS.md
+CHANGELOG.md
+CONTRIBUTING.md
+DELIVERABLES_INDEX.md
+QUICK_START.md
+*.txt

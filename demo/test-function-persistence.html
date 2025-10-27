@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Function Persistence Test - Lua WASM</title>
+  <title>Function Persistence Test - Cu WASM</title>
   <style>
     body { 
       font-family: 'Monaco', monospace; 
@@ -141,8 +141,8 @@
   </div>
 
   <script type="module">
-    import lua from '../web/lua-api.js';
-    window.lua = lua;
+    import cu from "./cu-api.js';
+    window.cu = lua;
     
     function setStatus(msg, type = 'info') {
       const el = document.getElementById('status');
@@ -330,7 +330,7 @@ return "✅ All function tests passed!"`;
       
       try {
         // Reinitialize Lua VM to simulate page reload
-        await lua.loadLuaWasm({ autoRestore: false });
+        await cu.load({ autoRestore: false });
         lua.init();
         
         // Verify Memory is empty
@@ -621,10 +621,10 @@ return result`;
     // Initialize on load
     async function init() {
       try {
-        setStatus('Loading Lua WASM...', 'info');
-        await lua.loadLuaWasm({ autoRestore: false });
+        setStatus('Loading Cu WASM...', 'info');
+        await cu.load({ autoRestore: false });
         lua.init();
-        setStatus('✅ Lua WASM ready - Click Step 1 to begin', 'success');
+        setStatus('✅ Cu WASM ready - Click Step 1 to begin', 'success');
       } catch (error) {
         setStatus('❌ Failed to load: ' + error.message, 'error');
       }

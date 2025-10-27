@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lua WASM Test Suite</title>
+  <title>Cu WASM Test Suite</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -65,7 +65,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🧪 Lua WASM Test Suite</h1>
+    <h1>🧪 Cu WASM Test Suite</h1>
     <div id="results"></div>
     <div id="summary" style="display: none;" class="summary">
       <div>Test Results</div>
@@ -74,7 +74,7 @@
   </div>
 
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
 
     const resultsDiv = document.getElementById('results');
     const summaryDiv = document.getElementById('summary');
@@ -96,7 +96,7 @@
       let failed = 0;
 
       try {
-        await lua.loadLuaWasm();
+        await cu.load();
         addResult('1 - Module Load', true, 'WASM module loaded successfully');
         passed++;
       } catch (e) {

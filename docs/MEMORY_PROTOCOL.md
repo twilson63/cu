@@ -1265,7 +1265,7 @@ compute(bufferPtr, encoder.encode(safeCode).length);
   - `src/result.zig` - Result encoding
   - `src/error.zig` - Error handling
   - `src/serializer.zig` - Type serialization
-  - `web/lua-api.js` - JavaScript API
+  - `web/cu-api.js` - JavaScript API
   - `web/lua-deserializer.js` - JavaScript deserializer
 
 - **Related Documentation**:

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lua Persistent - WASM Demo</title>
+  <title>Cu - WASM Demo</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -135,11 +135,11 @@
 </head>
 <body>
   <div class="container">
-    <h1>🌙 Lua Persistent (WASM)</h1>
+    <h1>🌙 Cu (WASM)</h1>
     <p style="color: #858585; margin-bottom: 20px;">Phase 6: Export Function Fix - Full WASM Integration</p>
 
     <div id="status" class="section status info">
-      Loading Lua WASM module...
+      Loading Cu WASM module...
     </div>
 
     <div class="section">
@@ -199,19 +199,22 @@ return _home.counter</textarea>
       <h2>📚 API Reference</h2>
       <div class="code-examples">
         <strong>Available Functions:</strong><br>
-        <code>lua.init()</code> - Initialize Lua VM<br>
-        <code>lua.compute(code)</code> - Execute Lua code<br>
-        <code>lua.getBufferPtr()</code> - Get buffer address<br>
-        <code>lua.getBufferSize()</code> - Get buffer size (64KB)<br>
-        <code>lua.getMemoryStats()</code> - Get memory info<br>
-        <code>lua.runGc()</code> - Run garbage collection<br>
+        <code>cu.init()</code> - Initialize Lua VM<br>
+        <code>cu.compute(code)</code> - Execute Lua code<br>
+        <code>cu.getBufferPtr()</code> - Get buffer address<br>
+        <code>cu.getBufferSize()</code> - Get buffer size (64KB)<br>
+        <code>cu.getMemoryStats()</code> - Get memory info<br>
+        <code>cu.runGc()</code> - Run garbage collection<br>
+        <em>(Also available as <code>lua.*</code> for backward compatibility)</em><br>
       </div>
     </div>
   </div>
 
   <script type="module">
-    import lua from './lua-api.js';
-    window.lua = lua;
+    import cu from "./cu-api.js';
+    // Export as both 'cu' (new) and 'lua' (deprecated) for backward compatibility
+    window.cu = cu;
+    window.cu = cu;
 
     function setStatus(msg, type = 'info') {
       const el = document.getElementById('status');
@@ -236,7 +239,7 @@ return _home.counter</textarea>
 
     function updateStats() {
       try {
-        const stats = lua.getMemoryStats();
+        const stats = cu.getMemoryStats();
         document.getElementById('stat-total').textContent = 
           (stats.total / 1024 / 1024).toFixed(2) + ' MB';
         document.getElementById('stat-used').textContent = 
@@ -257,18 +260,18 @@ return _home.counter</textarea>
 
       try {
         setStatus('⏳ Executing...', 'info');
-        const result = await lua.compute(code);
+        const result = await cu.compute(code);
         console.log('Compute result:', result);
         if (result > 0) {
           // Check if readResult exists
-          if (!lua.readResult) {
-            console.error('lua.readResult is not defined!');
+          if (!cu.readResult) {
+            console.error('cu.readResult is not defined!');
             // Fallback to readBuffer
-            const output = lua.readBuffer(lua.getBufferPtr(), result);
+            const output = cu.readBuffer(cu.getBufferPtr(), result);
             clearOutput();
             appendOutput(`> ${code}\n\nRaw output:\n${output}`);
           } else {
-            const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+            const { output, result: returnValue } = cu.readResult(cu.getBufferPtr(), result);
             console.log('Deserialized:', { output, returnValue });
             clearOutput();
             appendOutput(`> ${code}`);
@@ -289,7 +292,7 @@ return _home.counter</textarea>
             }
           }
         } else if (result < 0) {
-          const errOutput = lua.readBuffer(lua.getBufferPtr(), -result);
+          const errOutput = cu.readBuffer(cu.getBufferPtr(), -result);
           clearOutput();
           appendOutput(`> ${code}\n\nError:\n${errOutput}`);
         } else {
@@ -313,7 +316,7 @@ return _home.counter</textarea>
 
     window.runGarbageCollection = () => {
       try {
-        lua.runGc();
+        cu.runGc();
         updateStats();
         setStatus('♻️ GC complete', 'success');
       } catch (error) {
@@ -323,7 +326,7 @@ return _home.counter</textarea>
 
     window.saveState = async () => {
       try {
-        const saved = await lua.saveState();
+        const saved = await cu.saveState();
         if (saved) {
           setStatus('💾 _home state saved to browser storage', 'success');
         } else {
@@ -336,9 +339,9 @@ return _home.counter</textarea>
 
     window.loadState = async () => {
       try {
-        const loaded = await lua.loadState();
+        const loaded = await cu.loadState();
         if (loaded) {
-          const info = lua.getTableInfo();
+          const info = cu.getTableInfo();
           setStatus(`📂 _home restored from browser storage (table #${info.memoryTableId || 'n/a'})`, 'success');
           clearOutput();
           appendOutput('State loaded. Your _home table and external tables are restored.\nTry accessing previously created data via _home.');
@@ -385,14 +388,14 @@ return _home.counter`;
 
     window.addEventListener('load', async () => {
       try {
-        setStatus('⏳ Loading Lua WASM module...', 'info');
-        await lua.loadLuaWasm({ autoRestore: true });
-        lua.init();
-        const info = lua.getTableInfo();
+        setStatus('⏳ Loading Cu WASM module...', 'info');
+        await cu.loadLuaWasm({ autoRestore: true });
+        cu.init();
+        const info = cu.getTableInfo();
         if (info.memoryTableId) {
-          setStatus(`✅ Lua ready — _home table #${info.memoryTableId} attached`, 'success');
+          setStatus(`✅ Cu ready — _home table #${info.memoryTableId} attached`, 'success');
         } else {
-          setStatus('✅ Lua WASM Ready - _home table initialized', 'success');
+          setStatus('✅ Cu WASM Ready - _home table initialized', 'success');
         }
         updateStats();
       } catch (error) {

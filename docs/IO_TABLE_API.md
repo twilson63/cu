@@ -79,7 +79,7 @@ The `_io` external table solves these problems by:
 ### Basic Input/Output
 
 ```javascript
-import lua from './lua-api.js';
+import lua from './cu-api.js';
 
 // Initialize
 await lua.loadLuaWasm();

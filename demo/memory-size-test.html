@@ -51,8 +51,8 @@
   <div class="output" id="output">Ready for testing...</div>
 
   <script type="module">
-    import lua from '../web/lua-api.js';
-    window.lua = lua;
+    import cu from "./cu-api.js';
+    window.cu = lua;
     
     function updateStats() {
       const info = lua.getTableInfo();
@@ -293,7 +293,7 @@ return "_home cleared"`;
     
     // Initialize
     async function init() {
-      await lua.loadLuaWasm({ autoRestore: true });
+      await cu.load({ autoRestore: true });
       lua.init();
       updateStats();
       document.getElementById('output').textContent = 'Ready! Try the test buttons above.';

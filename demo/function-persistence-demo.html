@@ -199,8 +199,8 @@ return "Created function with ID #" .. unique_id</textarea>
   </div>
 
   <script type="module">
-    import lua from '../web/lua-api.js';
-    window.lua = lua;
+    import cu from "./cu-api.js';
+    window.cu = lua;
     
     let originalFunctionId = null;
     let isVMReset = false;
@@ -310,7 +310,7 @@ return "✅ Function works!"`;
         setOutput('after-output', 'Resetting Lua VM...', 'warning');
         
         // Completely reinitialize the VM without restoring
-        await lua.loadLuaWasm({ autoRestore: false });
+        await cu.load({ autoRestore: false });
         lua.init();
         isVMReset = true;
         
@@ -482,7 +482,7 @@ return "✅ Restored function works perfectly!"`;
     // Initialize
     async function init() {
       try {
-        await lua.loadLuaWasm({ autoRestore: false });
+        await cu.load({ autoRestore: false });
         lua.init();
         document.getElementById('vm-indicator').className = 'indicator on';
         setOutput('before-output', 'Ready! Click "Create Function" to begin.', 'info');

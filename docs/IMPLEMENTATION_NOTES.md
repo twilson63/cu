@@ -1,4 +1,4 @@
-# Implementation Notes - Lua WASM Persistent
+# Implementation Notes - Cu WASM Persistent
 
 Technical implementation details, phase breakdown, and key development decisions.
 
@@ -50,7 +50,7 @@ Phase 5: Documentation & Examples
 ## Phase 1: Core Lua Integration
 
 ### Goal
-Create a working Lua WASM module that can execute Lua code and return results.
+Create a working Cu WASM module that can execute Lua code and return results.
 
 ### Implementation Details
 
@@ -590,7 +590,7 @@ extern fn js_func(ptr: [*]const u8, len: usize) c_int;
 
 ## Summary
 
-The implementation successfully creates a production-ready Lua WASM module by:
+The implementation successfully creates a production-ready Cu WASM module by:
 
 1. **Integrating Lua 5.1 C library** - Compiles without modification
 2. **Adding type-safe wrappers** - Zig bindings reduce FFI errors

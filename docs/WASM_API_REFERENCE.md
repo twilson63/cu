@@ -1,15 +1,17 @@
-# Lua WASM Low-Level API Reference
+# Cu WASM Low-Level API Reference
 
 **Version:** 2.0.0  
 **Last Updated:** October 2025  
-**Target:** Developers integrating lua.wasm with WAMR, wasmtime, wazero, or custom WASM runtimes
+**Target:** Developers integrating cu.wasm (formerly lua.wasm) with WAMR, wasmtime, wazero, or custom WASM runtimes
+
+> **Note:** As of v2.0, the WASM artifact is named `cu.wasm`. The name `lua.wasm` is deprecated but still provided for compatibility.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-  - [What is lua.wasm?](#what-is-luawasm)
+  - [What is cu.wasm?](#what-is-cuwasm)
   - [Target Audience](#target-audience)
   - [Prerequisites](#prerequisites)
   - [Quick Start](#quick-start)
@@ -43,9 +45,9 @@
 
 ## Overview
 
-### What is lua.wasm?
+### What is cu.wasm?
 
-lua.wasm is a WebAssembly build of Lua 5.4.7 with external table persistence, compiled from Zig source code. It provides a complete Lua runtime that can execute in any WASM environment, with special support for persisting Lua state outside of WASM linear memory.
+cu.wasm (Compute Unit) is a WebAssembly build of Lua 5.4.7 with external table persistence, compiled from Zig source code. It provides a complete Lua runtime that can execute in any WASM environment, with special support for persisting Lua state outside of WASM linear memory.
 
 **Key Features:**
 - Full Lua 5.4.7 compatibility
@@ -65,14 +67,14 @@ lua.wasm is a WebAssembly build of Lua 5.4.7 with external table persistence, co
 ### Target Audience
 
 This documentation is for developers who want to:
-- Integrate lua.wasm into non-JavaScript environments
+- Integrate cu.wasm into non-JavaScript environments
 - Build custom WASM runtimes with Lua support
 - Implement host functions in Rust, C, Go, or other languages
 - Understand the low-level WASM interface
 - Create language-specific bindings
 
 **Not Needed If:**
-- You're using the JavaScript wrapper (web/lua-api.js)
+- You're using the JavaScript wrapper (web/cu-api.js)
 - You only need browser integration (use high-level API)
 
 ### Prerequisites
@@ -84,7 +86,7 @@ This documentation is for developers who want to:
 
 **Required Tools:**
 - WASM runtime (wasmtime, WAMR, wazero, Node.js, browser)
-- lua.wasm binary (from web/lua.wasm)
+- cu.wasm binary (from web/cu.wasm)
 
 ### Quick Start
 
@@ -92,7 +94,7 @@ This documentation is for developers who want to:
 
 ```javascript
 // 1. Load WASM
-const wasmBytes = await readFile('web/lua.wasm');
+const wasmBytes = await readFile('web/cu.wasm');
 const imports = {
   env: {
     js_ext_table_set: (tid, kp, kl, vp, vl) => { /* implement */ },
@@ -138,7 +140,7 @@ if (resultLen < 0) {
 │  │         WASM Runtime (wasmtime/WAMR/etc.)        │  │
 │  │                                                   │  │
 │  │  ┌─────────────────────────────────────────────┐ │  │
-│  │  │          lua.wasm Module                    │ │  │
+│  │  │          cu.wasm Module                     │ │  │
 │  │  │                                             │ │  │
 │  │  │  ┌──────────────┐  ┌──────────────┐       │ │  │
 │  │  │  │  Lua 5.4 VM  │  │  I/O Buffer  │       │ │  │
@@ -178,7 +180,7 @@ if (resultLen < 0) {
 
 ## Exports Reference
 
-The lua.wasm module exports 11 functions. All exports use C calling convention compatible with standard WASM.
+The cu.wasm module exports 11 functions. All exports use C calling convention compatible with standard WASM.
 
 ### Type Mappings
 
@@ -473,7 +475,7 @@ Custom Lua memory allocator (internal use).
 
 ## Imports Reference
 
-The lua.wasm module requires 5 host functions in the `env` namespace.
+The cu.wasm module requires 5 host functions in the `env` namespace.
 
 ### External Table Operations
 
@@ -1086,7 +1088,7 @@ set_memory_alias_enabled(1); // Enable Memory alias
 ## FAQ
 
 **Q: Can I use lua.wasm in the browser?**  
-A: Yes! Use the JavaScript wrapper (web/lua-api.js) for easier integration.
+A: Yes! Use the JavaScript wrapper (web/cu-api.js) for easier integration.
 
 **Q: Do I need to implement all 5 host functions?**  
 A: Yes, all are required. Return -1 from unimplemented functions.

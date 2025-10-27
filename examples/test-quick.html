@@ -4,12 +4,12 @@
   <title>Quick Lua Test</title>
 </head>
 <body>
-  <h1>Quick Lua WASM Test</h1>
+  <h1>Quick Cu WASM Test</h1>
   <button onclick="testLua()">Test Lua</button>
   <pre id="output"></pre>
   
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
     
     window.testLua = async () => {
       const output = document.getElementById('output');
@@ -17,7 +17,7 @@
       
       try {
         output.textContent += 'Loading WASM...\n';
-        await lua.loadLuaWasm();
+        await cu.load();
         
         output.textContent += 'Initializing Lua...\n';
         const initResult = lua.init();

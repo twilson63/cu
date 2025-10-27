@@ -574,7 +574,7 @@ if (wasmInstance.exports.sync_external_table_counter) {
 
 ## Persistence Integration
 
-The reference implementation (`web/lua-api.js`) integrates with IndexedDB through `lua-persistence.js`:
+The reference implementation (`web/cu-api.js`) integrates with IndexedDB through `lua-persistence.js`:
 
 ### Saving State
 
@@ -892,11 +892,11 @@ To successfully instantiate and run `lua.wasm`, you must:
 6. **Manage table IDs** with proper synchronization
 7. **Support persistence** for long-term state storage
 
-The reference implementation in `web/lua-api.js` (lines 127-216) provides a battle-tested example that handles all edge cases and integrates with IndexedDB for persistence.
+The reference implementation in `web/cu-api.js` (lines 127-216) provides a battle-tested example that handles all edge cases and integrates with IndexedDB for persistence.
 
 ## See Also
 
-- `web/lua-api.js:127-216` - Reference implementation
+- `web/cu-api.js:127-216` - Reference implementation
 - `src/ext_table.zig:8-12` - WASM function declarations
 - `src/serializer.zig` - Value serialization format
 - `docs/ARCHITECTURE.md` - System architecture overview

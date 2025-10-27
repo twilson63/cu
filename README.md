@@ -31,7 +31,9 @@
 
 ## 🚀 Quick Start
 
-> **Note on Naming**: As of v2.0.0, the persistent storage table is now called `_home` instead of `Memory`. This change provides better clarity and follows Lua naming conventions (prefixed with underscore to indicate it's a special/system table). See the [Migration Guide](docs/MIGRATION_TO_HOME.md) for upgrading from v1.x.
+> **Important Notes:**
+> - **WASM Artifact Rename**: As of v2.0, the WASM binary is named `cu.wasm` (formerly `lua.wasm`). The old name is deprecated but still provided for compatibility.
+> - **Storage Table Rename**: The persistent storage table is now called `_home` instead of `Memory`. See the [Migration Guide](docs/MIGRATION_TO_HOME.md) for upgrading from v1.x.
 
 ### CDN Usage (Fastest)
 
@@ -43,18 +45,18 @@
 </head>
 <body>
     <script type="module">
-        import lua from './web/lua-api.js';
+        import cu from './web/cu-api.js';
         
-        // Initialize Lua WASM
-        await lua.loadLuaWasm();
-        lua.init();
+        // Initialize Cu WASM
+        await cu.load();
+        cu.init();
         
         // Basic computation
-        const result = await lua.compute('return 2 + 2');
+        const result = await cu.compute('return 2 + 2');
         console.log('Result:', result); // 4
         
         // Define and persist functions in _home table
-        await lua.compute(`
+        await cu.compute(`
             function _home.fibonacci(n)
                 if n <= 1 then return n end
                 return _home.fibonacci(n - 1) + _home.fibonacci(n - 2)
@@ -62,10 +64,10 @@
         `);
         
         // Save state (includes functions)
-        await lua.saveState();
+        await cu.saveState();
         
         // After page reload, function still exists and works
-        const fibResult = await lua.compute('return _home.fibonacci(10)');
+        const fibResult = await cu.compute('return _home.fibonacci(10)');
         console.log('Fibonacci(10):', fibResult); // 55
     </script>
 </body>
@@ -79,24 +81,24 @@ npm install cu
 ```
 
 ```javascript
-import lua from './web/lua-api.js';
+import cu from './web/cu-api.js';
 
-await lua.loadLuaWasm();
-lua.init();
+await cu.load();
+cu.init();
 
 // Basic usage
-const result = await lua.compute('return "Hello from Lua!"');
+const result = await cu.compute('return "Hello from Lua!"');
 console.log(result); // "Hello from Lua!"
 
 // Store data in _home table (with automatic persistence)
-await lua.compute(`
+await cu.compute(`
     _home.users = _home.users or {}
     _home.users.user1 = { name = 'Alice', age = 30 }
     _home.users.user2 = { name = 'Bob', age = 25 }
 `);
 
 // Data persists automatically - save to IndexedDB
-await lua.saveState();
+await cu.saveState();
 
 // After page refresh, data is automatically restored
 ```
@@ -108,14 +110,14 @@ await lua.saveState();
 The `_io` external table enables passing arbitrarily large structured data between JavaScript and Lua, bypassing the 64KB I/O buffer limitation. Perfect for processing large datasets while preserving type information.
 
 ```javascript
-import lua from './lua-api.js';
+import cu from './lua-api.js';
 
 // Initialize
-await lua.loadLuaWasm();
-lua.init();
+await cu.load();
+cu.init();
 
 // Process structured data with setInput/getOutput
-lua.setInput({
+cu.setInput({
   users: [
     { id: 1, name: "Alice", score: 95 },
     { id: 2, name: "Bob", score: 87 },
@@ -124,7 +126,7 @@ lua.setInput({
   threshold: 90
 });
 
-lua.compute(`
+cu.compute(`
   local users = _io.input.users
   local threshold = _io.input.threshold
   
@@ -144,7 +146,7 @@ lua.compute(`
   }
 `);
 
-const result = lua.getOutput();
+const result = cu.getOutput();
 console.log(result);
 // {
 //   highScorers: [
@@ -213,7 +215,7 @@ For detailed _io table documentation, see [IO_TABLE_API.md](docs/IO_TABLE_API.md
 
 ```javascript
 // Define functions in _home table
-await lua.compute(`
+await cu.compute(`
     function _home.taxCalculator(income, deductions) 
         local taxable = income - (deductions or 0)
         local brackets = {10000, 50000, 100000}
@@ -224,7 +226,7 @@ await lua.compute(`
 `);
 
 // Function with closures
-await lua.compute(`
+await cu.compute(`
     local count = 0
     function _home.counterFactory()
         count = count + 1
@@ -233,10 +235,10 @@ await lua.compute(`
 `);
 
 // Save functions to persist across page reloads
-await lua.saveState();
+await cu.saveState();
 
 // Use functions (they persist automatically after reload)
-const result = await lua.compute(`
+const result = await cu.compute(`
     return {
         tax = _home.taxCalculator(75000, 5000),
         count1 = _home.counterFactory(),
@@ -259,7 +261,7 @@ const users = Array.from({length: 1000}, (_, i) => ({
 
 // Insert users via Lua
 console.time('Insert 1000 users');
-await lua.compute(`
+await cu.compute(`
     _home.appUsers = _home.appUsers or {}
     -- Users will be populated via JavaScript calls
 `);
@@ -275,18 +277,18 @@ users.forEach(user => {
     }\n`;
 });
 
-await lua.compute(insertCode);
+await cu.compute(insertCode);
 console.timeEnd('Insert 1000 users');
 
 // Save all data
-await lua.saveState();
+await cu.saveState();
 ```
 
 ### Querying and Filtering
 
 ```javascript
 // Query data using Lua directly
-const highScorers = await lua.compute(`
+const highScorers = await cu.compute(`
     local results = {}
     for key, user in pairs(_home.appUsers) do
         if user.score >= 800 then
@@ -300,7 +302,7 @@ const highScorers = await lua.compute(`
 console.log('Top scorers:', highScorers);
 
 // Range queries
-const midRangeUsers = await lua.compute(`
+const midRangeUsers = await cu.compute(`
     local results = {}
     for key, user in pairs(_home.appUsers) do
         if user.score >= 400 and user.score <= 600 then
@@ -311,7 +313,7 @@ const midRangeUsers = await lua.compute(`
 `);
 
 // String matching
-const emailResults = await lua.compute(`
+const emailResults = await cu.compute(`
     local results = {}
     for key, user in pairs(_home.appUsers) do
         if string.match(user.email, "example") then
@@ -326,7 +328,7 @@ const emailResults = await lua.compute(`
 
 ```javascript
 // Define analytical functions
-await lua.compute(`
+await cu.compute(`
     function _home.average(values)
         local sum = 0
         for _, v in ipairs(values) do sum = sum + v end
@@ -354,7 +356,7 @@ await lua.compute(`
 `);
 
 // Use analytical functions
-const analysis = await lua.compute(`
+const analysis = await cu.compute(`
     local scores = {}
     for i = 1, 100 do
         scores[i] = math.random(100, 1000)
@@ -372,15 +374,15 @@ const analysis = await lua.compute(`
 console.log('Score analysis:', analysis);
 
 // Save analysis functions for reuse
-await lua.saveState();
+await cu.saveState();
 ```
 
 ## 📚 API Reference
 
 ### Core Functions
 
-#### `LuaWASM.init(options?)`
-Initialize the enhanced Lua WASM environment.
+#### `CuWASM.init(options?)`
+Initialize the enhanced Cu WASM environment.
 
 **Parameters:**
 - `options` (optional): Configuration object
@@ -391,7 +393,7 @@ Initialize the enhanced Lua WASM environment.
 
 **Returns:** Promise<EnhancedLuaInstance>
 
-#### `lua.compute(code)`
+#### `cu.compute(code)`
 Execute Lua code and return the result.
 
 **Parameters:**
@@ -399,7 +401,7 @@ Execute Lua code and return the result.
 
 **Returns:** Promise that resolves to the last returned value from Lua (as string/number/object)
 
-#### `lua.saveState(name?)`
+#### `cu.saveState(name?)`
 Save the _home table and all external tables to browser storage (IndexedDB).
 
 **Parameters:**
@@ -407,7 +409,7 @@ Save the _home table and all external tables to browser storage (IndexedDB).
 
 **Returns:** Promise<boolean> - Success status
 
-#### `lua.loadState(name?)`
+#### `cu.loadState(name?)`
 Restore the _home table and all external tables from browser storage.
 
 **Parameters:**
@@ -415,12 +417,12 @@ Restore the _home table and all external tables from browser storage.
 
 **Returns:** Promise<boolean> - Success status
 
-#### `lua.init()`
+#### `cu.init()`
 Initialize the Lua VM after loading the WASM module.
 
 **Returns:** number - Status code (0 = success)
 
-#### `lua.getMemoryStats()`
+#### `cu.getMemoryStats()`
 Get memory statistics from the Lua VM.
 
 **Returns:** Object with memory information
@@ -428,12 +430,12 @@ Get memory statistics from the Lua VM.
 - `used`: Memory currently in use
 - `free`: Available memory
 
-#### `lua.runGc()`
+#### `cu.runGc()`
 Run garbage collection on the Lua VM.
 
 **Returns:** void
 
-#### `lua.readBuffer(ptr, len)`
+#### `cu.readBuffer(ptr, len)`
 Read raw bytes from WASM memory.
 
 **Parameters:**
@@ -442,7 +444,7 @@ Read raw bytes from WASM memory.
 
 **Returns:** string - Decoded buffer contents
 
-#### `lua.getTableInfo()`
+#### `cu.getTableInfo()`
 Get information about external tables.
 
 **Returns:** Object with table information
@@ -454,12 +456,12 @@ Get information about external tables.
 
 The `_io` table provides structured input/output capabilities for passing large datasets between JavaScript and Lua.
 
-#### `lua.getIoTableId()`
+#### `cu.getIoTableId()`
 Get the numeric identifier for the `_io` external table.
 
 **Returns:** `number|null` - Table ID or null if not initialized
 
-#### `lua.setInput(data)`
+#### `cu.setInput(data)`
 Set input data accessible as `_io.input` in Lua.
 
 **Parameters:**
@@ -467,44 +469,44 @@ Set input data accessible as `_io.input` in Lua.
 
 **Example:**
 ```javascript
-lua.setInput({
+cu.setInput({
   users: [{ id: 1, name: "Alice" }],
   config: { limit: 100 }
 });
 
-lua.compute(`
+cu.compute(`
   local users = _io.input.users
   local limit = _io.input.config.limit
   -- Process data
 `);
 ```
 
-#### `lua.getOutput()`
+#### `cu.getOutput()`
 Retrieve output data set by Lua via `_io.output`.
 
 **Returns:** `any` - JavaScript value matching the structure set in Lua
 
 **Example:**
 ```javascript
-lua.compute(`
+cu.compute(`
   _io.output = {
     result = "success",
     items = {1, 2, 3}
   }
 `);
 
-const output = lua.getOutput();
+const output = cu.getOutput();
 console.log(output); // { result: "success", items: [1, 2, 3] }
 ```
 
-#### `lua.setInputField(key, value)`
+#### `cu.setInputField(key, value)`
 Set a specific field in `_io.input` without replacing entire input.
 
 **Parameters:**
 - `key` (string): Field name
 - `value` (any): Value to set
 
-#### `lua.getOutputField(key)`
+#### `cu.getOutputField(key)`
 Retrieve a specific field from `_io.output`.
 
 **Parameters:**
@@ -512,7 +514,7 @@ Retrieve a specific field from `_io.output`.
 
 **Returns:** `any` - Field value or null
 
-#### `lua.setMetadata(meta)`
+#### `cu.setMetadata(meta)`
 Set metadata in `_io.meta` for tracking and debugging.
 
 **Parameters:**
@@ -526,7 +528,7 @@ lua.setMetadata({
 });
 ```
 
-#### `lua.clearIo()`
+#### `cu.clearIo()`
 Clear all data in the `_io` table (input, output, and metadata).
 
 **Returns:** `void`
@@ -609,7 +611,7 @@ RPC-style method invocation pattern.
 **Example:**
 ```javascript
 // Define handler in Lua
-await lua.compute(`
+await cu.compute(`
   function calculateStats(params)
     local sum = 0
     for _, v in ipairs(params.data) do
@@ -631,10 +633,10 @@ Since all data is stored in Lua tables accessed via the _home table, you can que
 
 ```javascript
 // Direct table access
-const user = await lua.compute('return _home.users.user1');
+const user = await cu.compute('return _home.users.user1');
 
 // Iteration over tables
-const userCount = await lua.compute(`
+const userCount = await cu.compute(`
     local count = 0
     for key, user in pairs(_home.users) do
         count = count + 1
@@ -643,7 +645,7 @@ const userCount = await lua.compute(`
 `);
 
 // Filtering and mapping
-const results = await lua.compute(`
+const results = await cu.compute(`
     local active = {}
     for key, user in pairs(_home.users) do
         if user.status == "active" then
@@ -674,7 +676,7 @@ const results = await lua.compute(`
 ├───────────────────┼───────────────────────────┤
 │                   ▼                           │
 │  ┌───────────────────────────────────────┐  │
-│  │  WASM Module (lua.wasm)               │  │
+│  │  WASM Module (cu.wasm)                │  │
 │  │  ┌─────────────────────────────────┐  │  │
 │  │  │  Enhanced Lua 5.4.7 VM          │  │  │
 │  │  │  - Function Serialization        │  │  │
@@ -704,34 +706,45 @@ const results = await lua.compute(`
 
 ### Comprehensive Test Suite
 
+Cu includes a fast, reliable Node.js-based test suite with 27 tests covering all functionality:
+
 ```bash
-# Run all tests
+# Run all Node.js tests (fast, ~80ms)
 npm test
 
-# Run specific test categories
-npm run test:function-persistence
-npm run test:batch-operations  
-npm run test:advanced-querying
-npm run test:performance
+# Run browser tests (for IndexedDB persistence, DOM features)
+npm run test:browser
 
-# Run with coverage
-npm run test:coverage
+# Debug browser tests
+npm run test:debug
 
-# Run performance benchmarks
-npm run benchmark
+# Run browser tests in headed mode
+npm run test:headed
+
+# Run demo server
+npm run demo
 ```
+
+**Test Coverage:**
+- ✅ 4 initialization tests (WASM loading, VM setup)
+- ✅ 12 computation tests (Lua execution, data types, control flow)
+- ✅ 11 _io table tests (JavaScript ↔ Lua data exchange)
+
+All tests execute in Node.js using direct WASM loading for speed and reliability. Browser tests are available for web-specific features like IndexedDB persistence.
+
+See [TESTING_MIGRATION.md](TESTING_MIGRATION.md) for architecture details.
 
 ### Performance Benchmarks
 
 ```javascript
 // Function serialization performance
 console.time('Function Persistence');
-await lua.compute(`
+await cu.compute(`
     function _home.testFunc(x) 
         return x * 2 
     end
 `);
-await lua.saveState();
+await cu.saveState();
 console.timeEnd('Function Persistence'); // ~2-10ms
 
 // Bulk data storage
@@ -740,12 +753,12 @@ let code = '_home.bench = {}\n';
 for (let i = 0; i < 1000; i++) {
     code += `_home.bench.key${i} = "value${i}"\n`;
 }
-await lua.compute(code);
+await cu.compute(code);
 console.timeEnd('Store 1000 items'); // ~50-100ms
 
 // Table iteration performance
 console.time('Query 1000 items');
-const results = await lua.compute(`
+const results = await cu.compute(`
     local results = {}
     for key, value in pairs(_home.bench) do
         if string.match(key, "key5") then
@@ -772,7 +785,7 @@ console.timeEnd('Query 1000 items'); // ~5-20ms
 ```javascript
 // Always wrap code in try-catch for error handling
 try {
-    const result = await lua.compute(`
+    const result = await cu.compute(`
         return _home.getValue("key")
     `);
 } catch (error) {
@@ -781,12 +794,12 @@ try {
 
 // Save state regularly to persist data
 setInterval(async () => {
-    await lua.saveState();
+    await cu.saveState();
     console.log('State saved');
 }, 5000);
 
 // Use consistent naming for _home table keys
-await lua.compute(`
+await cu.compute(`
     _home.config = _home.config or {}
     _home.data = _home.data or {}
     _home.cache = _home.cache or {}
@@ -850,7 +863,7 @@ npm run dev
 ./build.sh --minimal
 
 # Clean and rebuild
-rm -rf .zig-cache .build web/lua.wasm && ./build.sh --enhanced
+rm -rf .zig-cache .build web/cu.wasm web/lua.wasm && ./build.sh --enhanced
 ```
 
 ## 📊 Performance Characteristics
@@ -899,7 +912,7 @@ The API remains otherwise unchanged, ensuring a smooth upgrade path.
 
 ## 🔧 Low-Level WASM API
 
-For developers integrating lua.wasm into **non-JavaScript environments** (Rust, C, Go, custom WASM runtimes), we provide comprehensive low-level API documentation:
+For developers integrating cu.wasm into **non-JavaScript environments** (Rust, C, Go, custom WASM runtimes), we provide comprehensive low-level API documentation:
 
 **📘 [WASM Low-Level API Reference](docs/WASM_API_REFERENCE.md)**
 
@@ -998,5 +1011,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 <p align="center">
-  Made with ❤️ by the Lua WASM community
+  Made with ❤️ by the Cu WASM community
 </p>

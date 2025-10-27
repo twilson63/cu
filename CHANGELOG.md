@@ -86,7 +86,7 @@ _home.value = 42
 
 ### Added
 
-- Initial Lua WASM implementation with persistent external tables
+- Initial Cu WASM implementation with persistent external tables
 - Function serialization and deserialization support
 - IndexedDB-backed persistence for browser environments
 - External table API with metatable support

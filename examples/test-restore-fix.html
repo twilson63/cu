@@ -70,13 +70,13 @@ return "Attempted restore"</textarea>
   <pre id="tableInfo">No tables loaded</pre>
 
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
     
     let initialized = false;
     
     async function init() {
       if (!initialized) {
-        await lua.loadLuaWasm();
+        await cu.load();
         lua.init();
         initialized = true;
         console.log('Lua initialized');

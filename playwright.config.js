@@ -1,8 +1,9 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 export default defineConfig({
-  testDir: './',
+  testDir: './tests',
   testMatch: '**/*.test.js',
+  testIgnore: '**/.archive/**',
   timeout: 30000,
   expect: { timeout: 5000 },
   fullyParallel: false,
@@ -17,7 +18,7 @@ export default defineConfig({
   webServer: {
     command: 'cd web && python3 -m http.server 8000',
     port: 8000,
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120000,
   },
   projects: [

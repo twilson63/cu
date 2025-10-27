@@ -16,7 +16,7 @@
   <div id="results"></div>
   
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
     
     window.runTest = async () => {
       const results = document.getElementById('results');
@@ -24,7 +24,7 @@
       
       try {
         // Initialize
-        await lua.loadLuaWasm();
+        await cu.load();
         lua.init();
         
         // Test 1: Create external table and set values

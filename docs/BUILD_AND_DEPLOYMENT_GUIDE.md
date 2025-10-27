@@ -1,6 +1,6 @@
 # Build and Deployment Guide
 
-**Document**: How to Build, Deploy, and Use Lua WASM  
+**Document**: How to Build, Deploy, and Use Cu WASM  
 **Date**: October 23, 2025  
 **Audience**: Developers, DevOps, System Administrators
 
@@ -42,7 +42,7 @@ python3 -m http.server 8000
 
 ```
 ✅ Build complete!
-   Output: web/lua.wasm
+   Output: web/cu.wasm
    Size: 1,313 KB
 ```
 
@@ -104,7 +104,7 @@ cd cu
   ... (31 more files)
 🔧 Compiling Zig main...
 ✅ Build complete!
-   Output: web/lua.wasm
+   Output: web/cu.wasm
    Size: 1,313 KB
 ```
 
@@ -127,7 +127,7 @@ Project Root/
 │   ├── lvm.o
 │   └── ... (31 more)
 └── web/
-    ├── lua.wasm       # Final WASM binary
+    ├── cu.wasm       # Final WASM binary
     └── ... (JS files)
 ```
 
@@ -138,7 +138,7 @@ Project Root/
 ./build.sh --clean
 
 # Or manual
-rm -rf .zig-cache .build web/lua.wasm
+rm -rf .zig-cache .build web/cu.wasm
 ./build.sh
 ```
 
@@ -187,10 +187,10 @@ zig build-exe -target wasm32-wasi -O ReleaseFast \
     src/main.zig \
     .build/*.o \
     -lwasi-emulated-signal \
-    -femit-bin=web/lua.wasm
+    -femit-bin=web/cu.wasm
 ```
 
-**Output**: `web/lua.wasm` (1.3 MB)
+**Output**: `web/cu.wasm` (1.3 MB)
 
 #### Phase 5: Verification
 ```bash
@@ -216,7 +216,7 @@ zig build-exe -target wasm32-wasi -O ReleaseFast \
 #### Change Output Directory
 ```bash
 # Edit build.sh
--femit-bin=/custom/path/lua.wasm
+-femit-bin=/custom/path/cu.wasm
 ```
 
 #### Change Optimization Level
@@ -243,7 +243,7 @@ zig build-exe -target wasm32-wasi -O ReleaseFast \
 
 ```javascript
 // 1. Fetch WASM binary
-const response = await fetch('lua.wasm');
+const response = await fetch('cu.wasm');
 const buffer = await response.arrayBuffer();
 
 // 2. Create import object
@@ -282,7 +282,7 @@ const module = await WebAssembly.instantiate(buffer, imports);
 
 ```javascript
 const fs = require('fs');
-const buffer = fs.readFileSync('lua.wasm');
+const buffer = fs.readFileSync('cu.wasm');
 
 // Import object same as browser
 const imports = { env: { ... } };
@@ -435,7 +435,7 @@ class LuaWasm {
 
 // Usage
 const lua = new LuaWasm();
-await lua.init('lua.wasm');
+await lua.init('cu.wasm');
 
 const { result, output } = lua.execute("print('Hello, World!')");
 console.log('Result:', result);
@@ -454,7 +454,7 @@ console.log('Output:', output);
 npm install -g binaryen
 
 # Optimize for size
-wasm-opt -O4 web/lua.wasm -o web/lua-opt.wasm
+wasm-opt -O4 web/cu.wasm -o web/lua-opt.wasm
 
 # Expected savings: 50-100 KB
 ```
@@ -560,7 +560,7 @@ docker push myregistry.azurecr.io/lua-wasm:latest
 #### Upload to CDN
 ```bash
 # Example: AWS S3 + CloudFront
-aws s3 cp web/lua-opt.wasm.gz s3://my-bucket/lua.wasm \
+aws s3 cp web/lua-opt.wasm.gz s3://my-bucket/cu.wasm \
   --metadata-directive COPY \
   --cache-control "max-age=31536000" \
   --content-encoding gzip \
@@ -578,19 +578,19 @@ wrangler publish  # Using Wrangler CLI
 
 ```bash
 # 1. Check binary format
-file web/lua.wasm
+file web/cu.wasm
 # Expected: WebAssembly (wasm) binary module
 
 # 2. Verify magic bytes
-od -x web/lua.wasm | head -1
+od -x web/cu.wasm | head -1
 # Expected: 0061 736d 0100 0000
 
 # 3. Check size
-ls -lh web/lua.wasm
+ls -lh web/cu.wasm
 # Expected: ~1.3M
 
 # 4. Validate with wabt
-wasm-objdump -h web/lua.wasm
+wasm-objdump -h web/cu.wasm
 ```
 
 ### JavaScript Testing
@@ -599,7 +599,7 @@ wasm-objdump -h web/lua.wasm
 # 1. Load in Node.js
 node -e "
   const fs = require('fs');
-  const buffer = fs.readFileSync('web/lua.wasm');
+  const buffer = fs.readFileSync('web/cu.wasm');
   const mod = new WebAssembly.Module(buffer);
   console.log('✓ Module loaded');
   
@@ -621,7 +621,7 @@ cd web && python3 -m http.server 8000
 const fs = require('fs');
 
 async function test() {
-  const buffer = fs.readFileSync('web/lua.wasm');
+  const buffer = fs.readFileSync('web/cu.wasm');
   const imports = { env: { /* ... */ } };
   
   const module = await WebAssembly.instantiate(buffer, imports);
@@ -742,7 +742,7 @@ console.log(`Buffer: ${buf_ptr}, size: ${buf_size}`);
 if ('caches' in window) {
   const cacheName = 'lua-wasm-cache-v1';
   const cache = await caches.open(cacheName);
-  const cached = await cache.match('lua.wasm');
+  const cached = await cache.match('cu.wasm');
   
   if (cached) {
     return cached.arrayBuffer();
@@ -772,11 +772,11 @@ console.timeEnd('lua_execution');
 
 ```bash
 # 1. Strip debug information
-wasm-strip web/lua.wasm
+wasm-strip web/cu.wasm
 # Expected: 100 KB savings
 
 # 2. Run optimizer
-wasm-opt -O4 web/lua.wasm -o web/lua-opt.wasm
+wasm-opt -O4 web/cu.wasm -o web/lua-opt.wasm
 # Expected: 50-100 KB savings
 
 # 3. Compress
@@ -792,7 +792,7 @@ let wasmModule = null;
 
 async function getModule() {
   if (!wasmModule) {
-    const response = await fetch('lua.wasm');
+    const response = await fetch('cu.wasm');
     const buffer = await response.arrayBuffer();
     wasmModule = await WebAssembly.instantiate(buffer, imports);
   }
@@ -813,21 +813,21 @@ for (const code of scripts) {
 
 ```bash
 # 1. Enable HTTP/2 push
-Link: </lua.wasm>; rel=preload; as=fetch
+Link: </cu.wasm>; rel=preload; as=fetch
 
 # 2. Enable service worker caching
 // In service worker
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open('lua-wasm-v1').then(cache => {
-      return cache.addAll(['/lua.wasm']);
+      return cache.addAll(['/cu.wasm']);
     })
   );
 });
 
 # 3. Use resource hints
 <link rel="preconnect" href="https://cdn.example.com">
-<link rel="prefetch" href="https://cdn.example.com/lua.wasm">
+<link rel="prefetch" href="https://cdn.example.com/cu.wasm">
 ```
 
 ---

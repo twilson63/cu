@@ -1,4 +1,4 @@
-# Lua WASM Export Fix - Quick Start Guide
+# Cu WASM Export Fix - Quick Start Guide
 
 **Status**: ✅ Implementation Complete  
 **Date**: October 23, 2025
@@ -36,7 +36,7 @@ Complete overview of all deliverables and metrics
 ### Key Changes
 - 6 functions converted to `export fn` in `src/main.zig`
 - Zig 0.15 compatibility fixes across 7 files
-- WASM binary rebuilt: `web/lua.wasm` (1644 KB)
+- WASM binary rebuilt: `web/cu.wasm` (1644 KB, primary) + `web/lua.wasm` (deprecated)
 - All documentation created
 
 ---
@@ -83,7 +83,8 @@ Status:      Ready to start
 | `FIX_REPORT.md` | Detailed change report |
 | `PROJECT_STATUS.md` | Current status |
 | `src/main.zig` | Modified source code |
-| `web/lua.wasm` | Compiled binary |
+| `web/cu.wasm` | Compiled binary (primary) |
+| `web/lua.wasm` | Compiled binary (deprecated) |
 | `src/main.zig.backup` | Original for comparison |
 
 ---
@@ -120,7 +121,7 @@ cp src/lua.zig.backup src/lua.zig
 A: Export keyword implementation is complete. JavaScript accessibility requires further testing.
 
 **Q: Can I use this binary?**  
-A: Yes, `web/lua.wasm` is ready. Test export accessibility in next phase.
+A: Yes, `web/cu.wasm` is ready (use this). `web/lua.wasm` is deprecated but provided for compatibility.
 
 **Q: Do I need to do anything?**  
 A: No. Implementation is complete. Review documentation for next steps.

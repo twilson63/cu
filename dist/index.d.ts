@@ -1,10 +1,10 @@
 /**
- * Lua Persistent Demo - TypeScript Definitions
+ * Cu - TypeScript Definitions
  */
 
 export interface MemoryStats {
   io_buffer_size: number;
-  lua_memory_used: number;
+  cu_memory_used: number;
   wasm_pages: number;
 }
 
@@ -21,27 +21,29 @@ export interface TableInfo {
 
 export interface TablesInfo {
   tableCount: number;
+  homeTableId: number | null;
+  nextTableId: number;
   tables: TableInfo[];
 }
 
-export interface LuaAPI {
+export interface CuAPI {
   /**
-   * Load and initialize the Lua WebAssembly module
+   * Load and initialize the Cu WebAssembly module
    */
-  loadLuaWasm(): Promise<boolean>;
+  load(options?: { autoRestore?: boolean; wasmPath?: string }): Promise<boolean>;
 
   /**
-   * Initialize the Lua VM
+   * Initialize the Cu VM
    * @returns 0 on success, -1 on failure
    */
   init(): number;
 
   /**
-   * Execute Lua code
+   * Execute Lua code in the Cu environment
    * @param code Lua code to execute
    * @returns Number of bytes in result buffer (negative on error)
    */
-  compute(code: string): number;
+  compute(code: string): Promise<number>;
 
   /**
    * Get the pointer to the I/O buffer
@@ -61,7 +63,7 @@ export interface LuaAPI {
   /**
    * Run garbage collection
    */
-  runGc(): void;
+  runGc(): boolean;
 
   /**
    * Read raw buffer contents as string
@@ -71,7 +73,7 @@ export interface LuaAPI {
   readBuffer(ptr: number, len: number): string;
 
   /**
-   * Read and deserialize Lua result from buffer
+   * Read and deserialize result from buffer
    * @param ptr Buffer pointer
    * @param len Number of bytes to read
    */
@@ -103,7 +105,37 @@ export interface LuaAPI {
    * Get information about current external tables
    */
   getTableInfo(): TablesInfo;
+
+  /**
+   * Get the _home table ID
+   */
+  getMemoryTableId(): number | null;
+
+  /**
+   * Set input data for _io.input
+   */
+  setInput(data: any): void;
+
+  /**
+   * Get output data from _io.output
+   */
+  getOutput(): any;
+
+  /**
+   * Set metadata for _io.meta
+   */
+  setMetadata(meta: any): void;
+
+  /**
+   * Clear all _io table contents
+   */
+  clearIo(): void;
+
+  /**
+   * Get the _io table ID
+   */
+  getIoTableId(): number;
 }
 
-declare const lua: LuaAPI;
-export default lua;
+declare const cu: CuAPI;
+export default cu;

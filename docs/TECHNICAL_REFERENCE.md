@@ -1,6 +1,6 @@
 # Technical Reference
 
-**Quick Developer Reference for Lua WASM Implementation**  
+**Quick Developer Reference for Cu WASM Implementation**  
 **Date**: October 23, 2025  
 **Audience**: Developers modifying the codebase
 

@@ -1,10 +1,10 @@
-// Node.js bare WASM integration example for lua.wasm
+// Node.js bare WASM integration example for cu.wasm
 //
 // This example demonstrates:
 // - Using Node.js built-in WebAssembly API (no frameworks)
 // - Direct WASM memory access
 // - Implementing all 5 host functions
-// - Difference from high-level lua-api.js wrapper
+// - Difference from "./cu-api.js wrapper
 // - Minimal dependencies (zero npm packages!)
 
 import { readFile } from 'fs/promises';
@@ -145,10 +145,14 @@ function jsExtTableKeys(tableId, bufPtr, maxLen) {
 let wasmInstance = null;
 
 /**
- * Load lua.wasm from various possible locations
+ * Load cu.wasm from various possible locations
  */
 async function loadWasmFile() {
   const paths = [
+    join(__dirname, '../../../web/cu.wasm'),
+    join(__dirname, '../../web/cu.wasm'),
+    join(__dirname, './cu.wasm'),
+    // Also check for legacy lua.wasm (deprecated)
     join(__dirname, '../../../web/lua.wasm'),
     join(__dirname, '../../web/lua.wasm'),
     join(__dirname, './lua.wasm'),
@@ -157,14 +161,17 @@ async function loadWasmFile() {
   for (const path of paths) {
     try {
       const buffer = await readFile(path);
-      console.log(`✓ Loaded lua.wasm from: ${path}\n`);
+      if (path.includes('lua.wasm')) {
+        console.warn('[DEPRECATED] lua.wasm found. Please update to cu.wasm.');
+      }
+      console.log(`✓ Loaded WASM from: ${path}\n`);
       return buffer;
     } catch (err) {
       // Continue to next path
     }
   }
 
-  throw new Error(`Could not find lua.wasm in any of: ${paths.join(', ')}`);
+  throw new Error(`Could not find cu.wasm or lua.wasm in any of: ${paths.join(', ')}`);
 }
 
 /**
@@ -353,7 +360,7 @@ async function main() {
   }
 
   console.log('\n✓ All examples completed successfully!');
-  console.log('\nKey Differences from lua-api.js:');
+  console.log('\nKey Differences from "./cu-api.js:');
   console.log('  - Direct WebAssembly.instantiate() instead of wrapper');
   console.log('  - Manual memory management with Uint8Array views');
   console.log('  - Direct access to WASM exports (init, compute, etc.)');

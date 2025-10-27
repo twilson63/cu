@@ -1,4 +1,4 @@
-# Troubleshooting Guide - Lua WASM Persistent
+# Troubleshooting Guide - Cu WASM Persistent
 
 Common issues, solutions, and debugging techniques.
 
@@ -442,7 +442,7 @@ if (result === null) {
 **Symptom:** Subsequent evals fail or behave strangely
 
 **Causes:**
-1. Old Lua WASM version (should be fixed)
+1. Old Cu WASM version (should be fixed)
 2. Not using current library
 
 **Solutions:**

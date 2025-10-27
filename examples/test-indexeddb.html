@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Lua Persistent Memory - IndexedDB Demo</title>
+  <title>Cu Memory - IndexedDB Demo</title>
   <style>
     body { 
       font-family: 'Monaco', 'Menlo', monospace; 
@@ -61,7 +61,7 @@
   </style>
 </head>
 <body>
-  <h1>🌙 Lua Persistent Memory - IndexedDB Demo</h1>
+  <h1>🌙 Cu Memory - IndexedDB Demo</h1>
   <p>This demo shows how external tables can be persisted to IndexedDB and restored after page refresh.</p>
 
   <h2>Step 1: Create Some Data</h2>
@@ -125,17 +125,17 @@ return "Data check complete"</textarea>
   <div id="tableInfo" class="table-info">No tables loaded</div>
 
   <script type="module">
-    import lua from './lua-api.js';
+    import cu from "./cu-api.js';
     
     let initialized = false;
     
     async function init() {
       if (!initialized) {
-        updateStatus('Initializing Lua WASM...', 'info');
-        await lua.loadLuaWasm();
+        updateStatus('Initializing Cu WASM...', 'info');
+        await cu.load();
         lua.init();
         initialized = true;
-        updateStatus('Lua WASM initialized', 'success');
+        updateStatus('Cu WASM initialized', 'success');
         
         // Try to load saved state automatically
         const loaded = await lua.loadState();

@@ -2,13 +2,13 @@
 
 ## JavaScript API
 
-### Module: lua-api.js
+### Module: cu-api.js
 
-The main interface for interacting with the Lua WASM module.
+The main interface for interacting with the Cu WASM module.
 
 #### Functions
 
-##### `loadLuaWasm(options)`
+##### `load(options)`
 Loads and instantiates the Lua WebAssembly module.
 
 **Parameters:**
@@ -18,18 +18,18 @@ Loads and instantiates the Lua WebAssembly module.
 
 **Example:**
 ```javascript
-import lua from './lua-api.js';
-await lua.loadLuaWasm({ autoRestore: true });
+import cu from './cu-api.js';
+await cu.load({ autoRestore: true });
 ```
 
 ##### `init()`
-Initializes the Lua VM and guarantees `_G._home` points to the active external table (reattached automatically when persisted state exists). Must be called after `loadLuaWasm()`.
+Initializes the Lua VM and guarantees `_G._home` points to the active external table (reattached automatically when persisted state exists). Must be called after `load()`.
 
 **Returns:** `number` - 0 on success, -1 on failure
 
 **Example:**
 ```javascript
-const result = lua.init();
+const result = cu.init();
 if (result === 0) {
     console.log('Lua VM initialized successfully');
 }
@@ -47,8 +47,8 @@ Executes Lua code and returns the serialized result.
 
 **Example:**
 ```javascript
-const resultBytes = lua.compute('return 1 + 1');
-const { output, result } = lua.readResult(lua.getBufferPtr(), resultBytes);
+const resultBytes = cu.compute('return 1 + 1');
+const { output, result } = cu.readResult(cu.getBufferPtr(), resultBytes);
 console.log(result); // 2
 ```
 
@@ -101,7 +101,7 @@ Returns the numeric identifier for the `_io` external table.
 
 **Example:**
 ```javascript
-const ioId = lua.getIoTableId();
+const ioId = cu.getIoTableId();
 console.log('_io table ID:', ioId);
 ```
 
@@ -124,14 +124,14 @@ Sets the input data that will be accessible as `_io.input` in Lua.
 **Example:**
 ```javascript
 // Simple object
-lua.setInput({
+cu.setInput({
   message: "Hello",
   value: 42,
   flag: true
 });
 
 // Nested structure
-lua.setInput({
+cu.setInput({
   user: {
     name: "Alice",
     address: {
@@ -146,7 +146,7 @@ lua.setInput({
 });
 
 // Large datasets (beyond 64KB)
-lua.setInput({
+cu.setInput({
   data: new Array(100000).fill(0).map((_, i) => ({ id: i, value: Math.random() }))
 });
 ```
@@ -166,7 +166,7 @@ Retrieves the output data set by Lua via `_io.output`.
 
 **Example:**
 ```javascript
-lua.compute(`
+cu.compute(`
   _io.output = {
     result = "processed",
     count = 10,
@@ -174,7 +174,7 @@ lua.compute(`
   }
 `);
 
-const output = lua.getOutput();
+const output = cu.getOutput();
 console.log(output);
 // {
 //   result: "processed",
@@ -202,9 +202,9 @@ Sets a specific field in the `_io.input` table without replacing the entire inpu
 **Example:**
 ```javascript
 // Set individual fields
-lua.setInputField('userId', 123);
-lua.setInputField('action', 'update');
-lua.setInputField('params', { limit: 10 });
+cu.setInputField('userId', 123);
+cu.setInputField('action', 'update');
+cu.setInputField('params', { limit: 10 });
 
 // In Lua:
 // _io.input.userId == 123
@@ -229,7 +229,7 @@ Retrieves a specific field from `_io.output` without deserializing the entire ou
 
 **Example:**
 ```javascript
-lua.compute(`
+cu.compute(`
   _io.output = {
     status = "ok",
     data = { huge = "dataset" },
@@ -238,7 +238,7 @@ lua.compute(`
 `);
 
 // Get only what you need
-const status = lua.getOutputField('status');
+const status = cu.getOutputField('status');
 console.log(status); // "ok"
 ```
 
@@ -258,13 +258,13 @@ Sets metadata in `_io.meta` for tracking and debugging purposes.
 
 **Example:**
 ```javascript
-lua.setMetadata({
+cu.setMetadata({
   requestId: 'req-12345',
   timestamp: Date.now(),
   version: '1.0.0'
 });
 
-lua.compute(`
+cu.compute(`
   print("Request ID: " .. _io.meta.requestId)
   -- Process data
 `);
@@ -285,11 +285,11 @@ Clears all data in the `_io` table (input, output, and metadata).
 **Example:**
 ```javascript
 // Set some data
-lua.setInput({ data: "test" });
-lua.compute(`_io.output = { result = "done" }`);
+cu.setInput({ data: "test" });
+cu.compute(`_io.output = { result = "done" }`);
 
 // Clear everything
-lua.clearIo();
+cu.clearIo();
 
 // _io.input, _io.output, and _io.meta are now nil
 ```
@@ -421,7 +421,7 @@ Provides a standardized way to call Lua functions by method name. The Lua code s
 **Example:**
 ```javascript
 // First, set up Lua handler functions:
-await lua.compute(`
+await cu.compute(`
   function calculateStats(params)
     local sum = 0
     for _, v in ipairs(params.data) do
@@ -678,9 +678,9 @@ Errors are indicated by negative return values from `compute()`:
 
 **Example:**
 ```javascript
-const result = lua.compute('invalid syntax');
+const result = cu.compute('invalid syntax');
 if (result < 0) {
-    const errorMsg = lua.readBuffer(lua.getBufferPtr(), -result);
+    const errorMsg = cu.readBuffer(cu.getBufferPtr(), -result);
     console.error('Lua error:', errorMsg);
 }
 ```

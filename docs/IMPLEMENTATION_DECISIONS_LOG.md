@@ -1,6 +1,6 @@
 # Implementation Decisions Log
 
-**Document**: Architecture and Design Decisions for Lua WASM Freestanding Build  
+**Document**: Architecture and Design Decisions for Cu WASM Freestanding Build  
 **Date**: October 23, 2025  
 **Project**: lua-wasm-freestanding  
 **Status**: Complete

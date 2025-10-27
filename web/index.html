@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lua Persistent - WASM Demo</title>
+  <title>Cu - WASM Demo</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -135,7 +135,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🌙 Lua Persistent (WASM)</h1>
+    <h1>🌙 Cu (WASM)</h1>
     <p style="color: #858585; margin-bottom: 20px;">Phase 6: Export Function Fix - Full WASM Integration</p>
 
     <div id="status" class="section status info">
@@ -169,12 +169,38 @@ return _home.counter</textarea>
         <button onclick="runExample('memory')" style="background: #666;">🗂️ _home Example</button>
         <button onclick="runExample('math')" style="background: #666;">📐 Math Example</button>
         <button onclick="runExample('string')" style="background: #666;">📜 String Example</button>
+        <button onclick="runExample('io-output')" style="background: #666;">📤 _io.output Example</button>
+        <button onclick="runExample('io-input')" style="background: #666;">📥 _io.input Example</button>
       </div>
     </div>
 
     <div class="section">
-      <h2>📊 Output</h2>
+      <h2>📥 _io.input (JSON)</h2>
+      <textarea id="io-input" placeholder='Enter JSON to set as _io.input, e.g.:
+{"name": "Alice", "age": 30}
+["apple", "banana", "cherry"]
+{"user": {"profile": {"level": 5}}}'
+style="width: 100%; height: 80px; padding: 10px; background: #1e1e1e; color: #d4d4d4; border: 1px solid #3e3e42; font-family: 'Monaco', monospace; font-size: 13px; resize: vertical;"></textarea>
+      <div class="button-group">
+        <button onclick="setIoInput()">📥 Set _io.input</button>
+        <button onclick="clearIoInput()">🗑️ Clear _io.input</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📊 Execution Output</h2>
       <div id="output" style="color: #6fc96f;">Ready for input...</div>
+    </div>
+
+    <div class="section">
+      <h2>📤 _io.output (JSON)</h2>
+      <div id="io-output" style="background: #1e1e1e; padding: 12px; min-height: 80px; border: 1px solid #3e3e42; font-size: 13px; white-space: pre-wrap; word-wrap: break-word; color: #9cdcfe;">
+(Not set - run code that sets _io.output)
+      </div>
+      <div class="button-group">
+        <button onclick="refreshIoOutput()">🔄 Refresh _io.output</button>
+        <button onclick="clearIoOutput()">🗑️ Clear _io.output</button>
+      </div>
     </div>
 
     <div class="section">
@@ -198,20 +224,33 @@ return _home.counter</textarea>
     <div class="section">
       <h2>📚 API Reference</h2>
       <div class="code-examples">
-        <strong>Available Functions:</strong><br>
-        <code>lua.init()</code> - Initialize Lua VM<br>
-        <code>lua.compute(code)</code> - Execute Lua code<br>
-        <code>lua.getBufferPtr()</code> - Get buffer address<br>
-        <code>lua.getBufferSize()</code> - Get buffer size (64KB)<br>
-        <code>lua.getMemoryStats()</code> - Get memory info<br>
-        <code>lua.runGc()</code> - Run garbage collection<br>
+        <strong>Core Functions:</strong><br>
+        <code>cu.init()</code> - Initialize Lua VM<br>
+        <code>cu.compute(code)</code> - Execute Lua code<br>
+        <code>cu.getBufferPtr()</code> - Get buffer address<br>
+        <code>cu.getBufferSize()</code> - Get buffer size (64KB)<br>
+        <code>cu.getMemoryStats()</code> - Get memory info<br>
+        <code>cu.runGc()</code> - Run garbage collection<br>
+        <br>
+        <strong>_io Table API:</strong><br>
+        <code>cu.setInput(data)</code> - Set _io.input with JS object<br>
+        <code>cu.getOutput()</code> - Get _io.output as JS object<br>
+        <code>cu.clearIo()</code> - Clear all _io contents<br>
+        <br>
+        <strong>Persistence:</strong><br>
+        <code>cu.saveState()</code> - Save _home to IndexedDB<br>
+        <code>cu.loadState()</code> - Load _home from IndexedDB<br>
+        <br>
+        <em>(Also available as <code>lua.*</code> for backward compatibility)</em><br>
       </div>
     </div>
   </div>
 
   <script type="module">
-    import lua from './lua-api.js';
-    window.lua = lua;
+    import cu from './cu-api.js';
+    // Export as both 'cu' (new) and 'lua' (deprecated) for backward compatibility
+    window.cu = cu;
+    window.lua = cu;
 
     function setStatus(msg, type = 'info') {
       const el = document.getElementById('status');
@@ -236,7 +275,7 @@ return _home.counter</textarea>
 
     function updateStats() {
       try {
-        const stats = lua.getMemoryStats();
+        const stats = cu.getMemoryStats();
         document.getElementById('stat-total').textContent = 
           (stats.total / 1024 / 1024).toFixed(2) + ' MB';
         document.getElementById('stat-used').textContent = 
@@ -257,18 +296,18 @@ return _home.counter</textarea>
 
       try {
         setStatus('⏳ Executing...', 'info');
-        const result = await lua.compute(code);
+        const result = await cu.compute(code);
         console.log('Compute result:', result);
         if (result > 0) {
           // Check if readResult exists
-          if (!lua.readResult) {
-            console.error('lua.readResult is not defined!');
+          if (!cu.readResult) {
+            console.error('cu.readResult is not defined!');
             // Fallback to readBuffer
-            const output = lua.readBuffer(lua.getBufferPtr(), result);
+            const output = cu.readBuffer(cu.getBufferPtr(), result);
             clearOutput();
             appendOutput(`> ${code}\n\nRaw output:\n${output}`);
           } else {
-            const { output, result: returnValue } = lua.readResult(lua.getBufferPtr(), result);
+            const { output, result: returnValue } = cu.readResult(cu.getBufferPtr(), result);
             console.log('Deserialized:', { output, returnValue });
             clearOutput();
             appendOutput(`> ${code}`);
@@ -289,7 +328,7 @@ return _home.counter</textarea>
             }
           }
         } else if (result < 0) {
-          const errOutput = lua.readBuffer(lua.getBufferPtr(), -result);
+          const errOutput = cu.readBuffer(cu.getBufferPtr(), -result);
           clearOutput();
           appendOutput(`> ${code}\n\nError:\n${errOutput}`);
         } else {
@@ -297,6 +336,8 @@ return _home.counter</textarea>
           appendOutput(`> ${code}\n\n(No output)`);
         }
         updateStats();
+        // Auto-refresh _io.output after execution
+        refreshIoOutput();
         setStatus('✅ Execution successful', 'success');
       } catch (error) {
         setStatus('❌ Error: ' + error.message, 'error');
@@ -313,7 +354,7 @@ return _home.counter</textarea>
 
     window.runGarbageCollection = () => {
       try {
-        lua.runGc();
+        cu.runGc();
         updateStats();
         setStatus('♻️ GC complete', 'success');
       } catch (error) {
@@ -323,7 +364,7 @@ return _home.counter</textarea>
 
     window.saveState = async () => {
       try {
-        const saved = await lua.saveState();
+        const saved = await cu.saveState();
         if (saved) {
           setStatus('💾 _home state saved to browser storage', 'success');
         } else {
@@ -336,9 +377,9 @@ return _home.counter</textarea>
 
     window.loadState = async () => {
       try {
-        const loaded = await lua.loadState();
+        const loaded = await cu.loadState();
         if (loaded) {
-          const info = lua.getTableInfo();
+          const info = cu.getTableInfo();
           setStatus(`📂 _home restored from browser storage (table #${info.memoryTableId || 'n/a'})`, 'success');
           clearOutput();
           appendOutput('State loaded. Your _home table and external tables are restored.\nTry accessing previously created data via _home.');
@@ -350,29 +391,71 @@ return _home.counter</textarea>
       }
     };
 
+    window.setIoInput = () => {
+      try {
+        const inputText = document.getElementById('io-input').value.trim();
+        if (!inputText) {
+          setStatus('⚠️ Enter JSON in _io.input field first', 'info');
+          return;
+        }
+        const inputData = JSON.parse(inputText);
+        cu.setInput(inputData);
+        setStatus('✅ _io.input set successfully', 'success');
+        console.log('Set _io.input:', inputData);
+      } catch (error) {
+        setStatus('❌ Invalid JSON: ' + error.message, 'error');
+      }
+    };
+
+    window.clearIoInput = () => {
+      document.getElementById('io-input').value = '';
+      try {
+        cu.setInput(null);
+        setStatus('✅ _io.input cleared', 'success');
+      } catch (error) {
+        setStatus('❌ Failed to clear: ' + error.message, 'error');
+      }
+    };
+
+    window.refreshIoOutput = () => {
+      try {
+        const output = cu.getOutput();
+        const el = document.getElementById('io-output');
+        if (output === null || output === undefined) {
+          el.textContent = '(Not set - run code that sets _io.output)';
+          el.style.color = '#858585';
+        } else {
+          el.textContent = JSON.stringify(output, null, 2);
+          el.style.color = '#9cdcfe';
+        }
+        console.log('_io.output:', output);
+      } catch (error) {
+        const el = document.getElementById('io-output');
+        el.textContent = 'Error: ' + error.message;
+        el.style.color = '#f97777';
+      }
+    };
+
+    window.clearIoOutput = () => {
+      try {
+        cu.clearIo();
+        const el = document.getElementById('io-output');
+        el.textContent = '(Cleared)';
+        el.style.color = '#858585';
+        setStatus('✅ _io cleared', 'success');
+      } catch (error) {
+        setStatus('❌ Failed to clear: ' + error.message, 'error');
+      }
+    };
+
       window.runExample = (type) => {
         let code = '';
         switch(type) {
           case 'memory':
-            code = `-- FUNCTION PERSISTENCE DEMO
--- Create a function with a unique timestamp
-local timestamp = os.time()
-_home.myFunc = function(x)
-  return "Created at " .. timestamp .. ": " .. x
-end
-
--- Test it
-print(_home.myFunc("Hello"))
-print("Timestamp embedded: " .. timestamp)
-
--- NOW: Click 💾 Save State
--- THEN: Refresh the browser (F5)
--- THEN: Click 📂 Load State
--- THEN: Run this code:
--- print(_home.myFunc("I survived!"))
--- The same timestamp will prove it's the same function!
-
-return "Function created with timestamp: " .. timestamp`;
+            code = `-- Increment a persistent counter stored in _home
+_home.counter = (_home.counter or 0) + 1
+print("Counter is now", _home.counter)
+return _home.counter`;
             break;
           case 'math':
             code = `-- Calculate sum from 1 to 100
@@ -392,6 +475,42 @@ return "Function created with timestamp: " .. timestamp`;
  end
  return "Original: " .. text .. "\nUpper: " .. upper .. "\nReversed: " .. reversed`;
             break;
+          case 'io-output':
+            code = `-- Set _io.output with a table
+_io.output = {
+  status = "success",
+  message = "Hello from Lua!",
+  data = {
+    items = {10, 20, 30},
+    nested = {level = 5, name = "test"}
+  }
+}
+return "Output set! Check _io.output panel below"`;
+            break;
+          case 'io-input':
+            // Set a sample input first
+            document.getElementById('io-input').value = JSON.stringify({
+              name: "Alice",
+              scores: [95, 87, 92],
+              config: { debug: true }
+            }, null, 2);
+            setIoInput();
+            code = `-- Read from _io.input and process
+local name = _io.input.name
+local total = 0
+for i, score in ipairs(_io.input.scores) do
+  total = total + score
+end
+local avg = total / #_io.input.scores
+
+_io.output = {
+  greeting = "Hello, " .. name .. "!",
+  average_score = avg,
+  debug_mode = _io.input.config.debug
+}
+
+return "Processed input for " .. name`;
+            break;
         }
         document.getElementById('editor').value = code;
         window.executeLua();
@@ -400,14 +519,14 @@ return "Function created with timestamp: " .. timestamp`;
 
     window.addEventListener('load', async () => {
       try {
-        setStatus('⏳ Loading Lua WASM module...', 'info');
-        await lua.loadLuaWasm({ autoRestore: true });
-        lua.init();
-        const info = lua.getTableInfo();
+        setStatus('⏳ Loading Cu WASM module...', 'info');
+        await cu.load({ autoRestore: true });
+        cu.init();
+        const info = cu.getTableInfo();
         if (info.memoryTableId) {
-          setStatus(`✅ Lua ready — _home table #${info.memoryTableId} attached`, 'success');
+          setStatus(`✅ Cu ready — _home table #${info.memoryTableId} attached`, 'success');
         } else {
-          setStatus('✅ Lua WASM Ready - _home table initialized', 'success');
+          setStatus('✅ Cu WASM Ready - _home table initialized', 'success');
         }
         updateStats();
       } catch (error) {

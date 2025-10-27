@@ -1,6 +1,6 @@
-# Lua API Documentation - Lua WASM Persistent
+# Lua API Documentation - Cu WASM Persistent
 
-Complete reference for the Lua WASM persistent demo, including API functions, serialization format, error reporting, and limitations.
+Complete reference for the Cu WASM persistent demo, including API functions, serialization format, error reporting, and limitations.
 
 ## Table of Contents
 
@@ -38,7 +38,7 @@ These functions are available through the JavaScript interface to the WASM modul
 
 #### `init() -> c_int`
 
-Initialize the Lua WASM module.
+Initialize the Cu WASM module.
 
 **Returns:** 0 on success, -1 on failure
 

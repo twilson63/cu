@@ -1,6 +1,6 @@
-# System Architecture - Lua WASM Persistent
+# System Architecture - Cu WASM Persistent
 
-Complete technical documentation of the Lua WASM persistent system architecture, design decisions, and data flows.
+Complete technical documentation of the Cu WASM persistent system architecture, design decisions, and data flows.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Complete technical documentation of the Lua WASM persistent system architecture,
 
 ## System Overview
 
-The Lua WASM persistent system consists of:
+The Cu WASM persistent system consists of:
 
 ```
 ┌─────────────────────────────────────────┐

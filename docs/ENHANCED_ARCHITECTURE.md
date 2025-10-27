@@ -1,8 +1,8 @@
-# Enhanced Lua WASM External Storage API - Architecture
+# Enhanced Cu WASM External Storage API - Architecture
 
 ## Overview
 
-This document describes the architecture of the Enhanced Lua WASM External Storage API, a production-ready system that extends the core Lua WASM implementation with advanced persistence capabilities, function serialization, batch operations, and sophisticated querying features.
+This document describes the architecture of the Enhanced Cu WASM External Storage API, a production-ready system that extends the core Cu WASM implementation with advanced persistence capabilities, function serialization, batch operations, and sophisticated querying features.
 
 ## System Architecture
 
@@ -554,6 +554,6 @@ function optimizeQuery(query) {
 
 ## Conclusion
 
-The Enhanced Lua WASM External Storage API provides a robust, scalable, and secure platform for browser-based Lua applications with advanced persistence capabilities. The architecture balances performance, functionality, and security while maintaining the lightweight nature of the original system.
+The Enhanced Cu WASM External Storage API provides a robust, scalable, and secure platform for browser-based Lua applications with advanced persistence capabilities. The architecture balances performance, functionality, and security while maintaining the lightweight nature of the original system.
 
 The modular design allows for future enhancements and adaptations as browser technologies evolve, ensuring the system remains relevant and performant in the changing web development landscape.

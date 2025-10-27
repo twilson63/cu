@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes a comprehensive architecture for building a secure relay service that enables Lua WASM compute containers to make LLM API requests without exposing API keys to the client. The system leverages wallet-based authentication, encrypted secret vaults, and the sandboxed nature of WASM for enhanced security.
+This document describes a comprehensive architecture for building a secure relay service that enables Cu WASM compute containers to make LLM API requests without exposing API keys to the client. The system leverages wallet-based authentication, encrypted secret vaults, and the sandboxed nature of WASM for enhanced security.
 
 ## Table of Contents
 
@@ -39,7 +39,7 @@ A secure relay service that:
 ┌─────────────────────────────────────────────────────────────┐
 │                     Client (Browser)                         │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │         Lua WASM Compute Container                  │    │
+│  │         Cu WASM Compute Container                  │    │
 │  │  • Sandboxed execution environment                  │    │
 │  │  • No direct network access                         │    │
 │  │  • External storage for caching                     │    │
@@ -88,9 +88,9 @@ A secure relay service that:
 
 ## System Components
 
-### 1. Client-Side: Lua WASM Container
+### 1. Client-Side: Cu WASM Container
 
-The Lua WASM compute unit provides a sandboxed environment for building LLM requests:
+The Cu WASM compute unit provides a sandboxed environment for building LLM requests:
 
 ```lua
 -- LLM Relay Client (client-side Lua)
@@ -220,7 +220,7 @@ Connects the WASM container to wallet and network:
 ```javascript
 // llm-relay-bridge.js
 import { ethers } from 'ethers';
-import * as lua from './lua-api.js';
+import * as lua from './cu-api.js';
 
 class LLMRelayBridge {
     constructor() {
@@ -315,7 +315,7 @@ class LLMRelayBridge {
     }
 }
 
-// High-level API for use with Lua WASM
+// High-level API for use with Cu WASM
 export async function initializeLLMRelay(relayEndpoint) {
     // 1. Load WASM
     await lua.loadLuaWasm();
@@ -745,7 +745,7 @@ docker run -d -p 6379:6379 redis:alpine
 python secure_relay_service.py
 ```
 
-### Step 2: Integrate with Lua WASM
+### Step 2: Integrate with Cu WASM
 
 ```javascript
 // In your web application
@@ -818,7 +818,7 @@ async function storeAPIKey(provider, apiKey) {
 ### Basic Completion
 
 ```lua
--- In Lua WASM
+-- In Cu WASM
 relay = require('relay')
 relay.init("https://relay.example.com", "0x1234...")
 
@@ -1000,7 +1000,7 @@ async def proxy_llm_request(...):
 
 ## Conclusion
 
-This architecture provides a secure, scalable solution for managing LLM API access through Lua WASM compute containers. The combination of:
+This architecture provides a secure, scalable solution for managing LLM API access through Cu WASM compute containers. The combination of:
 
 - **Wallet-based authentication** (cryptographically secure)
 - **Server-side key management** (keys never exposed)
@@ -1011,7 +1011,7 @@ Creates a robust system for building AI-powered applications without compromisin
 
 ## API Note
 
-**Important**: The Lua WASM API uses `lua.compute()` not `lua.eval()`. All examples in this document use the correct `compute()` function. If you see references to `eval()` in older documentation, please update to use `compute()`.
+**Important**: The Cu WASM API uses `lua.compute()` not `lua.eval()`. All examples in this document use the correct `compute()` function. If you see references to `eval()` in older documentation, please update to use `compute()`.
 
 ## Further Reading
 

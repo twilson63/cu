@@ -1,4 +1,4 @@
-# Enhanced Lua WASM External Storage API - Project Structure
+# Enhanced Cu WASM External Storage API - Project Structure
 
 ## 📁 Clean Project Organization
 

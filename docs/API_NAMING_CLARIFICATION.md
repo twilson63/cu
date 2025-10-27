@@ -8,7 +8,7 @@ There is an inconsistency in the codebase between the actual exported API functi
 
 ### Actual API (Correct)
 
-The exported JavaScript API in `web/lua-api.js` uses:
+The exported JavaScript API in `web/cu-api.js` uses:
 
 ```javascript
 export async function compute(code) {
@@ -44,7 +44,7 @@ Some documentation files reference `lua.eval()` instead of the correct `lua.comp
 All production code should use:
 
 ```javascript
-import lua from './lua-api.js';
+import lua from './cu-api.js';
 
 // Initialize
 await lua.loadLuaWasm();
@@ -80,7 +80,7 @@ export fn compute(input_len: usize) c_int {
 ### JavaScript API
 
 ```javascript
-// web/lua-api.js
+// web/cu-api.js
 export async function compute(code) {
   // ...
   if (wasmInstance && wasmInstance.exports.compute) {

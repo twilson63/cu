@@ -11,7 +11,9 @@
  */
 
 import { IoWrapper } from '../web/io-wrapper.js';
-import * as lua from '../web/lua-api.js';
+import * as cu from "./cu-api.js';
+// Backward compatibility alias
+
 
 // ============================================================================
 // Example 1: Basic Input/Output
@@ -501,7 +503,7 @@ async function runAllExamples() {
   try {
     // Initialize Lua WASM
     console.log('Initializing Lua WASM...');
-    await lua.loadLuaWasm();
+    await cu.load();
     lua.init();
     console.log('Lua WASM initialized successfully\n');
     

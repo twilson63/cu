@@ -1,6 +1,6 @@
-# Browser Testing Checklist - Lua WASM Persistent Demo
+# Browser Testing Checklist - Cu WASM Persistent Demo
 
-This checklist guides manual browser testing of the Lua WASM integration. Use this to verify functionality before each release.
+This checklist guides manual browser testing of the Cu WASM integration. Use this to verify functionality before each release.
 
 ## Pre-Test Setup
 

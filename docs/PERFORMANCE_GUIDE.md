@@ -1,4 +1,4 @@
-# Performance Guide - Lua WASM Persistent
+# Performance Guide - Cu WASM Persistent
 
 Benchmarking methodology, performance optimization techniques, and profiling instructions.
 

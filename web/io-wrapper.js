@@ -11,7 +11,7 @@
  *   const result = await io.computeWithIo(code, inputData);
  */
 
-import * as lua from './lua-api.js';
+import * as cu from './cu-api.js';
 
 /**
  * IoWrapper class - Provides high-level API for _io table operations
