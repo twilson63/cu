@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BigInt Test - Cu WASM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; 
+      background: #1e1e1e; 
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    h1 { color: #4ec9b0; margin-bottom: 20px; }
+    .result { 
+      background: #252526; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 5px;
+      border-left: 3px solid #4ec9b0;
+    }
+    .pass { border-left-color: #4ec9b0; }
+    .fail { border-left-color: #f44747; }
+    .code { 
+      background: #1e1e1e; 
+      padding: 10px; 
+      margin: 5px 0;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>BigInt Module Test</h1>
+  <div id="results"></div>
+
+  <script type="module">
+    import { createCu } from './wasm-loader.js';
+
+    const results = document.getElementById('results');
+
+    function addResult(name, passed, output) {
+      const div = document.createElement('div');
+      div.className = `result ${passed ? 'pass' : 'fail'}`;
+      div.innerHTML = `
+        <strong>${passed ? '✅' : '❌'} ${name}</strong>
+        <div class="code">${output}</div>
+      `;
+      results.appendChild(div);
+    }
+
+    async function runTests() {
+      try {
+        const cu = await createCu();
+        
+        // Test 1: Load bigint module
+        let result = cu.compute(`
+          local bigint = require('bigint')
+          return type(bigint)
+        `);
+        addResult('Load bigint module', result.result === 'table', `Type: ${result.result}`);
+
+        // Test 2: Check functions exist
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local funcs = {
+            bigint.new and 'new',
+            bigint.add and 'add',
+            bigint.sub and 'sub',
+            bigint.mul and 'mul',
+            bigint.div and 'div',
+            bigint.mod and 'mod'
+          }
+          return table.concat(funcs, ', ')
+        `);
+        addResult('Check bigint functions', 
+          result.result.includes('new') && result.result.includes('add'),
+          `Functions: ${result.result}`
+        );
+
+        // Test 3: Create bigint from string
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local x = bigint.new("1000000000000000000")
+          return tostring(x)
+        `);
+        addResult('Create bigint from string', 
+          result.result === '1000000000000000000',
+          `Result: ${result.result}`
+        );
+
+        // Test 4: Addition with operator
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local a = bigint.new("1000000000000000000")
+          local b = bigint.new("250000000000000000")
+          return tostring(a + b)
+        `);
+        addResult('Addition with + operator', 
+          result.result === '1250000000000000000',
+          `Result: ${result.result}`
+        );
+
+        // Test 5: Subtraction with function
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local a = bigint.new("1000000000000000000")
+          local b = bigint.new("250000000000000000")
+          return tostring(bigint.sub(a, b))
+        `);
+        addResult('Subtraction with function', 
+          result.result === '750000000000000000',
+          `Result: ${result.result}`
+        );
+
+        // Test 6: Multiplication
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local a = bigint.new("1000000000")
+          local b = bigint.new("1000000000")
+          return tostring(a * b)
+        `);
+        addResult('Multiplication', 
+          result.result === '1000000000000000000',
+          `Result: ${result.result}`
+        );
+
+        // Test 7: Division
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local a = bigint.new("1000000000000000000")
+          local b = bigint.new("1000000000")
+          return tostring(a / b)
+        `);
+        addResult('Division', 
+          result.result === '1000000000',
+          `Result: ${result.result}`
+        );
+
+        // Test 8: Complex expression
+        result = cu.compute(`
+          local bigint = require('bigint')
+          local eth = bigint.new("1000000000000000000")
+          local gas = bigint.new("21000")
+          local price = bigint.new("50000000000")
+          local fee = gas * price
+          local remaining = eth - fee
+          return tostring(remaining)
+        `);
+        addResult('Complex expression (ETH calculation)', 
+          result.result === '998950000000000000',
+          `Remaining: ${result.result} wei`
+        );
+
+      } catch (error) {
+        addResult('Test execution', false, `Error: ${error.message}`);
+      }
+    }
+
+    runTests();
+  </script>
+</body>
+</html>

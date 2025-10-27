@@ -22,7 +22,18 @@ for file in lapi lauxlib lbaselib lcode lcorolib lctype ldblib ldebug ldo ldump 
          exit 1
      }
 done
+printf "  %-20s" "lbigint.c"
+zig cc -target wasm32-freestanding -I.. -c -O2 lbigint.c -o ../../.build/lbigint.o 2>&1 && echo "✓" || {
+    echo ""
+    echo "❌ Failed to compile lbigint.c"
+    exit 1
+}
 cd ../..
+echo "🔧 Compiling bignum wrapper..."
+zig build-obj -target wasm32-freestanding -O ReleaseFast -Isrc -Isrc/lua \
+     src/bignum.zig -femit-bin=.build/bignum.o || { echo "❌ Failed to compile bignum.zig"; exit 1; }
+echo "✓"
+
 echo "🔧 Compiling libc stubs..."
 zig build-obj -target wasm32-freestanding -O ReleaseFast \
      src/libc-stubs.zig -femit-bin=.build/libc-stubs.o || { echo "❌ Failed to compile libc-stubs.zig"; exit 1; }
@@ -46,6 +57,8 @@ zig build-exe -target wasm32-freestanding -O ReleaseFast \
      --export=clear_io_table \
      src/main.zig \
      .build/libc-stubs.o \
+     .build/bignum.o \
+     .build/lbigint.o \
      .build/lapi.o .build/lauxlib.o .build/lbaselib.o \
      .build/lcode.o .build/lcorolib.o .build/lctype.o .build/ldblib.o \
      .build/ldebug.o .build/ldo.o .build/ldump.o .build/lfunc.o \

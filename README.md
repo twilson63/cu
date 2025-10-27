@@ -2,7 +2,7 @@
 
 ![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/twilson63/cu/build.yml?branch=main)
-![Version](https://img.shields.io/badge/version-2.0.0-green.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-green.svg)
 ![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)
 ![Lua](https://img.shields.io/badge/Lua-5.4.7-2C2D72?logo=lua&logoColor=white)
 
@@ -16,18 +16,20 @@
   compute unit
 ```
 
-> **Secure Sandboxed Compute Platform** - Production-ready Lua 5.4.7 in WebAssembly with persistent storage, function serialization, wallet-authenticated relay services, and encrypted secret management
+> **Secure Sandboxed Compute Platform** - Production-ready Lua 5.4.7 in WebAssembly with persistent storage, arbitrary-precision arithmetic, zero-copy I/O, and fixed memory architecture
 
 ## ✨ Key Features
 
 - **🔄 Complete State Persistence** - Functions, data, and application state survive page reloads
-- **⚡ High-Performance Operations** - Batch processing, indexing, and optimized queries
+- **🧮 Arbitrary-Precision Arithmetic** - Native BigInt module for financial calculations and large numbers
+- **⚡ Zero-Copy I/O** - Structured data exchange via external tables, bypassing 64KB buffer limits
+- **💾 Fixed Memory Architecture** - 2MB WASM linear memory with unlimited external storage
 - **🔒 Function Serialization** - Persist user-defined functions and closures across sessions
-- **📊 Advanced Querying** - Indexed queries, filters, and complex data operations
-- **🛡️ Production Ready** - Comprehensive error handling, validation, and security
-- **🎯 Zero Dependencies** - Pure WebAssembly, no external libraries required
-- **📦 Tiny Footprint** - 1.6MB WASM binary (gzips to ~400KB)
-- **🌐 Universal Browser Support** - Works in all modern browsers
+- **📊 Three Data Channels** - 64KB I/O buffer, `_io` ephemeral table, `_home` persistent table
+- **🛡️ Production Ready** - Comprehensive error handling, validation, and 55+ passing tests
+- **🎯 Zero Host Dependencies** - Pure WebAssembly, all features compiled into WASM
+- **📦 Compact Footprint** - 1.8MB WASM binary (includes BigInt, gzips to ~500KB)
+- **🌐 Universal Browser Support** - Works in all modern browsers and Node.js
 
 ## 🚀 Quick Start
 
@@ -102,6 +104,53 @@ await cu.saveState();
 
 // After page refresh, data is automatically restored
 ```
+
+### BigInt for Financial Calculations
+
+```javascript
+// BigInt module for arbitrary-precision arithmetic
+await cu.compute(`
+    local bigint = require('bigint')
+    
+    -- Ethereum wei calculations (18 decimals)
+    local eth = bigint.new("1000000000000000000")  -- 1 ETH in wei
+    local gas = bigint.new("21000")                -- Standard transfer gas
+    local gwei = bigint.new("50")                  -- Gas price in gwei
+    local wei_per_gwei = bigint.new("1000000000")
+    
+    local gas_price_wei = gwei * wei_per_gwei
+    local total_fee = gas * gas_price_wei
+    local remaining = eth - total_fee
+    
+    _io.output = {
+        original = tostring(eth),
+        fee = tostring(total_fee),
+        remaining = tostring(remaining)
+    }
+`);
+
+const result = cu.getOutput();
+console.log('Remaining:', result.remaining, 'wei');
+// Remaining: 998950000000000000 wei
+
+// Operator overloading and comparisons
+await cu.compute(`
+    local bigint = require('bigint')
+    local a = bigint.new("999999999999999999999999999999")
+    local b = bigint.new("1")
+    local sum = a + b  -- Works seamlessly with + - * / % operators
+    
+    print("Sum: " .. tostring(sum))
+    print("Greater than original: " .. tostring(sum > a))
+`);
+```
+
+**BigInt Features:**
+- **Arbitrary precision** - No size limits on integers
+- **Operator overloading** - Use `+`, `-`, `*`, `/`, `%`, `==`, `<`, `>`, etc.
+- **Module functions** - `bigint.add()`, `bigint.sub()`, `bigint.mul()`, `bigint.div()`, `bigint.mod()`
+- **Multiple bases** - Decimal, hex, or custom base construction
+- **Native WASM** - Fully compiled, zero host dependencies
 
 ## 📖 Advanced Usage Examples
 
@@ -658,59 +707,105 @@ const results = await cu.compute(`
 
 ## 🏗️ Architecture
 
+### Memory Architecture
+
+Cu uses a **dual-memory design** with fixed WASM linear memory and unlimited external storage:
+
 ```
 ┌─────────────────────────────────────────────┐
-│         Enhanced JavaScript API             │
-│  ┌───────────────────────────────────────┐  │
-│  │  Advanced Storage Manager             │  │
-│  │  - Function Persistence               │  │
-│  │  - Batch Operations                   │  │
-│  │  - Query Engine                       │  │
-│  │  - Compression Service                │  │
-│  └────────────────┬──────────────────────┘  │
-│                   │                           │
-│  ┌────────────────┴──────────────────────┐  │
-│  │  Transaction & Index Manager            │  │
-│  └────────────────┬──────────────────────┘  │
-│                   │                           │
-├───────────────────┼───────────────────────────┤
-│                   ▼                           │
-│  ┌───────────────────────────────────────┐  │
-│  │  WASM Module (cu.wasm)                │  │
-│  │  ┌─────────────────────────────────┐  │  │
-│  │  │  Enhanced Lua 5.4.7 VM          │  │  │
-│  │  │  - Function Serialization        │  │  │
-│  │  │  - Advanced Memory Management    │  │  │
-│  │  └─────────────────────────────────┘  │  │
-│  │  ┌─────────────────────────────────┐  │  │
-│  │  │  External Table System          │  │  │
-│  │  │  - Function Registry            │  │  │
-│  │  │  - Batch Operation Support      │  │  │
-│  │  └─────────────────────────────────┘  │  │
-│  └────────────────┬──────────────────────┘  │
-│                   │                           │
-└───────────────────┼───────────────────────────┘
-                    ▼
-┌─────────────────────────────────────────────┐
-│           Browser Storage                   │
-│  ┌───────────────────────────────────────┐  │
-│  │  IndexedDB Integration                │  │
-│  │  - Automatic Persistence              │  │
-│  │  - Compression Support                │  │
-│  │  - Transaction Safety                  │  │
-│  └───────────────────────────────────────┘  │
+│         JavaScript Host                     │
+│                                             │
+│  External Tables (JavaScript Maps):        │
+│  ┌──────────────────────────────────────┐  │
+│  │ _home: Persistent Storage            │  │
+│  │  - Functions, data, application state│  │
+│  │  - Survives page reloads             │  │
+│  │  - Serialized to IndexedDB           │  │
+│  ├──────────────────────────────────────┤  │
+│  │ _io: Ephemeral I/O Channel          │  │
+│  │  - .input: Request data              │  │
+│  │  - .output: Response data            │  │
+│  │  - .meta: Metadata                   │  │
+│  │  - Cleared after compute() calls     │  │
+│  └──────────────────────────────────────┘  │
+│                                             │
+└──────────────┬──────────────────────────────┘
+               │ WASM Boundary
+               │ (Host function imports/exports)
+┌──────────────┴──────────────────────────────┐
+│  WASM Module (cu.wasm - 1.8MB)              │
+│                                             │
+│  Fixed Linear Memory (2MB):                │
+│  ┌──────────────────────────────────────┐  │
+│  │ Lua 5.4.7 VM Heap (~1.5MB)           │  │
+│  │  - Lua state, local variables        │  │
+│  │  - Temporary tables, stack           │  │
+│  │  - BigInt allocations                │  │
+│  ├──────────────────────────────────────┤  │
+│  │ I/O Buffer (64KB)                    │  │
+│  │  - Simple return values              │  │
+│  │  - Error messages                    │  │
+│  │  - Print output capture              │  │
+│  └──────────────────────────────────────┘  │
+│                                             │
+│  Native Modules:                            │
+│  - External Table Bridge                   │
+│  - BigInt (Zig std.math.big.Int)          │
+│  - Function Serializer                     │
+│  - Error Handler                           │
+│  - Output Capture                          │
 └─────────────────────────────────────────────┘
 ```
+
+### Data Flow
+
+```
+JavaScript                    WASM/Lua
+┌─────────────────┐          ┌──────────────────┐
+│                 │          │                  │
+│ setInput(data)  │─────────>│ _io.input        │
+│                 │          │                  │
+│ compute(code)   │─────────>│ Execute Lua VM   │
+│                 │          │                  │
+│ getOutput()     │<─────────│ _io.output       │
+│                 │          │                  │
+│ saveState()     │<────────>│ _home table      │
+│                 │          │                  │
+└─────────────────┘          └──────────────────┘
+```
+
+### Three Data Channels
+
+1. **64KB I/O Buffer** (WASM linear memory)
+   - Simple return values (numbers, strings, booleans)
+   - Error messages and stack traces
+   - Print output capture
+   - Fast but size-limited
+
+2. **_io External Table** (JavaScript host)
+   - Large/complex ephemeral data
+   - Zero-copy structured I/O
+   - Bypasses 64KB limit
+   - Cleared between compute calls
+
+3. **_home External Table** (JavaScript host + IndexedDB)
+   - Persistent application state
+   - Functions, data, configuration
+   - Survives page reloads
+   - Unlimited size (browser memory limit)
 
 ## 🧪 Testing
 
 ### Comprehensive Test Suite
 
-Cu includes a fast, reliable Node.js-based test suite with 27 tests covering all functionality:
+Cu includes a fast, reliable Node.js-based test suite with 55 tests covering all functionality:
 
 ```bash
-# Run all Node.js tests (fast, ~80ms)
+# Run all Node.js tests (fast, ~140ms)
 npm test
+
+# Run specific test suite
+npx node --test tests/06-bigint.node.test.js
 
 # Run browser tests (for IndexedDB persistence, DOM features)
 npm run test:browser
@@ -729,6 +824,9 @@ npm run demo
 - ✅ 4 initialization tests (WASM loading, VM setup)
 - ✅ 12 computation tests (Lua execution, data types, control flow)
 - ✅ 11 _io table tests (JavaScript ↔ Lua data exchange)
+- ✅ 28 BigInt tests (construction, arithmetic, operators, edge cases)
+
+**Total: 55/55 tests passing** ✓
 
 All tests execute in Node.js using direct WASM loading for speed and reliability. Browser tests are available for web-specific features like IndexedDB persistence.
 

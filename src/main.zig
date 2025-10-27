@@ -6,6 +6,9 @@ const error_handler = @import("error.zig");
 const output_capture = @import("output.zig");
 const result_encoder = @import("result.zig");
 
+extern fn luaopen_bigint(L: *lua.lua_State) c_int;
+extern fn bigint_set_allocator(allocator: *anyopaque) void;
+
 const IO_BUFFER_SIZE = 64 * 1024;
 const TOTAL_MEMORY = 2 * 1024 * 1024;
 
@@ -31,6 +34,42 @@ extern fn js_ext_table_keys(table_id: u32, buf_ptr: [*]u8, max_len: usize) c_int
 extern fn lua_malloc(size: usize) ?*anyopaque;
 extern fn lua_realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque;
 extern fn lua_free(ptr: ?*anyopaque) void;
+
+// Zig Allocator interface for bigint library
+const LuaAllocator = struct {
+    fn alloc(_: *anyopaque, len: usize, _: std.mem.Alignment, _: usize) ?[*]u8 {
+        return @ptrCast(lua_malloc(len));
+    }
+
+    fn resize(_: *anyopaque, buf: []u8, _: std.mem.Alignment, new_len: usize, _: usize) bool {
+        _ = buf;
+        _ = new_len;
+        return false; // Don't support in-place resize, use realloc instead
+    }
+
+    fn remap(_: *anyopaque, memory: []u8, _: std.mem.Alignment, new_len: usize, _: usize) ?[*]u8 {
+        if (new_len == 0) {
+            lua_free(memory.ptr);
+            return null;
+        }
+        return @ptrCast(lua_realloc(memory.ptr, new_len));
+    }
+
+    fn free(_: *anyopaque, buf: []u8, _: std.mem.Alignment, _: usize) void {
+        lua_free(buf.ptr);
+    }
+};
+
+var lua_allocator_state: usize = 0;
+const lua_allocator = std.mem.Allocator{
+    .ptr = &lua_allocator_state,
+    .vtable = &.{
+        .alloc = LuaAllocator.alloc,
+        .resize = LuaAllocator.resize,
+        .remap = LuaAllocator.remap,
+        .free = LuaAllocator.free,
+    },
+};
 
 // Custom allocator function for Lua
 export fn lua_alloc(ud: ?*anyopaque, ptr: ?*anyopaque, osize: usize, nsize: usize) ?*anyopaque {
@@ -68,6 +107,7 @@ export fn init() i32 {
     setup_print_override(L.?);
     setup_memory_global(L.?);
     setup_io_global(L.?);
+    setup_bigint_library(L.?);
 
     return 0;
 }
@@ -93,6 +133,16 @@ fn setup_memory_global(L: *lua.lua_State) void {
 fn setup_io_global(L: *lua.lua_State) void {
     io_table_id = ext_table.create_table(L);
     lua.setglobal(L, "_io");
+}
+
+fn setup_bigint_library(L: *lua.lua_State) void {
+    bigint_set_allocator(@ptrCast(@constCast(&lua_allocator)));
+
+    _ = lua.getglobal(L, "package");
+    _ = lua.getfield(L, -1, "preload");
+    lua.pushcfunction(L, @as(lua.c.lua_CFunction, @ptrCast(&luaopen_bigint)));
+    lua.setfield(L, -2, "bigint");
+    lua.pop(L, 2);
 }
 
 pub fn ext_table_set(table_id: u32, key_ptr: [*]const u8, key_len: usize, val_ptr: [*]const u8, val_len: usize) c_int {
